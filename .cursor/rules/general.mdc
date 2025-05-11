@@ -1,0 +1,33 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+`zot-cli` is a Python `click` command-line wrapper for `pyzotero`. As much as possible, we directly pass through inputs, outputs, and exceptions. The goal is simply to expose the `pyzotero` API from the command line so that it can be more effectively used by AI agents with a Bash runner tool.
+
+## How `pyzotero` works
+
+.. important::
+    A ``Zotero`` instance is bound to the library or group used to create it. Thus, if you create a ``Zotero`` instance with a ``library_id`` of ``67`` and a ``library_type`` of ``group``, its item methods will only operate upon that group. Similarly, if you create a ``Zotero`` instance with your own ``library_id`` and a ``library_type`` of ``user``, the instance will be bound to your Zotero library.
+
+First, create a new Zotero instance:
+
+    .. py:class:: Zotero(library_id, library_type[, api_key, preserve_json_order, locale, local])
+
+        :param str library_id: a valid Zotero API user ID
+        :param str library_type: a valid Zotero API library type: **user** or **group**
+        :param str api_key: a valid Zotero API user key
+        :param bool preserve_json_order: Load JSON returns with OrderedDict to preserve their order
+        :param str locale: Set the `locale <https://www.zotero.org/support/dev/web_api/v3/types_and_fields#zotero_web_api_item_typefield_requests>`_, allowing retrieval of localised item types, field types, and creator types. Defaults to "en-US".
+        :param str local: use the local Zotero http server instead of the remote API. Note that the local server currently (November 2024) only allows **read** requests
+
+Example:
+
+    .. code-block:: python
+        :emphasize-lines: 4
+
+        from pyzotero import zotero
+        zot = zotero.Zotero('123', 'user', 'ABC1234XYZ')
+        # we now have a Zotero object, zot, and access to all its methods
+        first_ten = zot.items(limit=10)
+        # a list containing dicts of the ten most recently modified library items

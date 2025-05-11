@@ -1,0 +1,85 @@
+---
+description: `pyzotero` documentation for utility commands
+globs: zotcli_commands/util_cmds.py
+alwaysApply: false
+---
+
+This document contains the portion of the `pyzotero` documentation that corresponds to the utility command functionality in our CLI wrapper.
+
+# Utility Commands
+
+## Version Information
+
+```python
+# Get item versions
+zot.item_versions([search/request parameters])
+```
+
+Returns a dict containing version information for items in the library.
+
+```python
+# Get collection versions
+zot.collection_versions(itemID[, search/request parameters])
+```
+
+Parameters:
+- `itemID`: a Zotero item ID
+
+Returns a dict containing version information for collections in the library.
+
+Example of returned version data:
+```python
+{'C9KW275P': 3915, 'IB489TKM': 4025}
+```
+
+```python
+# Get last modified version
+zot.last_modified_version()
+```
+
+Returns the last modified version of the library as an integer.
+
+## Item Counts
+
+```python
+# Get count of all items in library
+zot.count_items()
+```
+
+Returns a count of all items in a library/group.
+
+```python
+# Get count of top-level items
+zot.num_items()
+```
+
+Returns the count of top-level items in the library.
+
+```python
+# Get count of items in a collection
+zot.num_collectionitems(collectionID)
+```
+
+Parameters:
+- `collectionID`: a Zotero collection ID
+
+Returns the count of items in the specified collection.
+
+## Error Handling
+
+Where possible, any `ZoteroError` which is raised will preserve the underlying error in its `__cause__` and `__context__` properties, should you wish to work with these directly.
+
+## Configuration
+
+```python
+# Create a Zotero instance
+zot = zotero.Zotero(library_id, library_type, api_key, preserve_json_order, locale, local)
+```
+
+Parameters:
+- `library_id`: a valid Zotero API user ID
+- `library_type`: a valid Zotero API library type: **user** or **group**
+- `api_key`: a valid Zotero API user key
+- `preserve_json_order`: Load JSON returns with OrderedDict to preserve their order
+- `locale`: Set the locale, allowing retrieval of localized item types, field types, and creator types. Defaults to "en-US"
+- `local`: use the local Zotero http server instead of the remote API. Note that the local server currently only allows **read** requests 

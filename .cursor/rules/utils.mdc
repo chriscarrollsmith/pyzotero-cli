@@ -1,0 +1,99 @@
+---
+description: `pyzotero` general documentation and utilities
+globs: zotcli_commands/utils.py
+alwaysApply: false
+---
+
+This document contains the general `pyzotero` documentation and utilities that are useful across all modules in our CLI wrapper.
+
+# Pyzotero Utilities
+
+## Getting Started
+
+```python
+from pyzotero import zotero
+zot = zotero.Zotero(library_id, library_type, api_key)
+items = zot.top(limit=5)
+# we've retrieved the latest five top-level items in our library
+# we can print each item's item type and ID
+for item in items:
+  print('Item Type: %s | Key: %s' % (item['data']['itemType'], item['data']['key']))
+```
+
+## Zotero Instance Creation
+
+A `Zotero` instance is bound to the library or group used to create it. Thus, if you create a `Zotero` instance with a `library_id` of `67` and a `library_type` of `group`, its item methods will only operate upon that group. Similarly, if you create a `Zotero` instance with your own `library_id` and a `library_type` of `user`, the instance will be bound to your Zotero library.
+
+```python
+# Create a new Zotero instance
+from pyzotero import zotero
+zot = zotero.Zotero('123', 'user', 'ABC1234XYZ')
+# we now have a Zotero object, zot, and access to all its methods
+first_ten = zot.items(limit=10)
+# a list containing dicts of the ten most recently modified library items
+```
+
+## Reading API Response Data
+
+In contrast to the v1 API, a great deal of additional metadata is now returned. In most cases, simply accessing items by referring to their `item['data']` key will suffice.
+
+Example of returned item data:
+```python
+{u'data': {u'ISBN': u'0810116820',
+          u'abstractNote': u'',
+          u'accessDate': u'',
+          u'archive': u'',
+          u'archiveLocation': u'',
+          u'callNumber': u'HIB 828.912 BEC:3g N9',
+          u'collections': [u'2UNGXMU9'],
+          u'creators': [{u'creatorType': u'author',
+                          u'firstName': u'Daniel',
+                          u'lastName': u'Katz'}],
+          u'date': u'1999',
+          # ... more fields ...
+          u'title': u'Saying I No More: Subjectivity and Consciousness in The Prose of Samuel Beckett',
+          u'url': u'',
+          u'version': 792,
+          u'volume': u''},
+ u'key': u'VDNIEAPH',
+ u'library': {u'id': 436,
+              u'links': {u'alternate': {u'href': u'https://www.zotero.org/urschrei',
+                                        u'type': u'text/html'}},
+              u'name': u'urschrei',
+              u'type': u'user'},
+ u'links': {u'alternate': {u'href': u'https://www.zotero.org/urschrei/items/VDNIEAPH',
+                          u'type': u'text/html'},
+            u'self': {u'href': u'https://api.zotero.org/users/436/items/VDNIEAPH',
+                      u'type': u'application/json'}},
+ u'meta': {u'creatorSummary': u'Katz',
+          u'numChildren': 0,
+          u'parsedDate': u'1999-00-00'},
+ u'version': 792}
+```
+
+## Pagination and Retrieval Tips
+
+The Read API returns 25 results by default (the API documentation claims 50). In the interests of usability, Pyzotero returns 100 items by default, by setting the API `limit` parameter to 100, unless it's set by the user. 
+
+If you wish to retrieve all top-level items without specifying a `limit` parameter, you'll have to wrap your call with `Zotero.everything()`:
+```python
+results = zot.everything(zot.top())
+```
+
+## Export Formats
+
+If you want to retrieve citation or bibliography entries, use these parameters:
+
+```python
+zot.add_parameters(content='bib', style='mla')
+```
+
+If these are set, the return value is a list of UTF-8 formatted HTML `div` elements, each containing an item: `['<div class="csl-entry">(content)</div>']`.
+
+You may also set `content='citation'` if you wish to retrieve citations. Similar to `bib`, the result will be a list of one or more HTML `span` elements.
+
+If you select one of the available export formats as the `content` parameter, pyzotero will in most cases return a list of unicode strings in the format you specified. The exception is the `csljson` format, which is parsed into a list of dicts.
+
+If you set `format='keys'`, a newline-delimited string containing item keys will be returned.
+
+If you set `format='bibtex'`, a bibtexparser object containing citations will be returned. You can access the citations as a list of dicts using the `.entries` property. 

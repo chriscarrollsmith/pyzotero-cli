@@ -1,0 +1,99 @@
+---
+description: `pyzotero` documentation for working with files and attachments
+globs: zotcli_commands/file_cmds.py
+alwaysApply: false
+---
+
+This document contains the portion of the `pyzotero` documentation that corresponds to the file and attachment-related functionality in our CLI wrapper.
+
+# File Commands
+
+## Retrieving Files
+
+```python
+# Retrieve raw file content of an item
+zot.file(itemID[, search/request parameters])
+```
+
+Parameters:
+- `itemID`: a zotero item ID
+
+Returns the raw file content of an item. This can be dumped like so:
+
+```python
+with open('article.pdf', 'wb') as f:
+  f.write(zot.file('BM8MZJBB'))
+```
+
+```python
+# Write an attachment to disk
+zot.dump(itemID[, filename, path])
+```
+
+Parameters:
+- `itemID`: a zotero item ID
+- `filename`: (optional) an alternate filename
+- `path`: (optional) a valid path for the file
+
+A convenient wrapper around `zot.file()`. Writes an attachment to disk using the optional path and filename. If neither are supplied, the file is written to the current working directory, and a `zot.item()` call is first made to determine the attachment filename. No error checking is done regarding the path. If successful, the full path including the file name is returned.
+
+**Note**: HTML snapshots will be dumped as zip files. These will be named with their API item key, and a .zip extension.
+
+Example:
+```python
+# write a file to the current working directory using the stored filename
+zot.dump('BM8MZJBB')
+# write the same file to a different path, with a new name
+zot.dump('BM8MZJBB', 'article_1.pdf', '/home/beckett/pdfs')
+```
+
+File retrieval and dumping should work for most common document, audio and video file formats.
+
+## Uploading Files
+
+**Warning**: Attachment methods are in beta.
+
+```python
+# Create one or more file attachment items
+zot.attachment_simple(files[, parentid])
+```
+
+Parameters:
+- `files`: a list containing one or more file paths: `['/path/to/file/file.pdf', … ]`
+- `parentid`: a library Item ID. If specified, attachments will be created as child items of this ID
+
+Returns a dict showing status of each requested upload.
+
+```python
+# Create file attachments with custom names
+zot.attachment_both(files[, parentid])
+```
+
+Parameters:
+- `files`: a list containing one or more lists or tuples in the format: `(file name, file path)`
+- `parentid`: a library Item ID. If specified, attachments will be created as child items of this ID
+
+Returns a dict showing status of each requested upload.
+
+```python
+# Upload files to corresponding attachments
+zot.upload_attachments(attachments[, parentid, basedir=None])
+```
+
+Parameters:
+- `attachments`: A list of dicts representing zotero imported files which may or may not already have their key fields
+- `parentid`: a library Item ID. If specified and key fields are not included, attachments will be created as child items
+- `basedir`: A string or path object to which filenames are evaluated relative to
+
+This method is useful when a sync has been interrupted, leaving attachment items without corresponding files.
+
+Return example:
+```python
+{
+    'success': [attach1, attach2...],
+    'failure': [attach3, attach4...],
+    'unchanged': [attach4, attach5...]
+}
+```
+
+Unlike the space-saving responses from the server, the return value passes back the `imported_file` item template populated with keys corresponding to each result. 

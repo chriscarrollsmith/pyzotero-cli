@@ -1,0 +1,28 @@
+---
+description: Importing and handling `pyzotero` exception types
+globs: 
+alwaysApply: false
+---
+Import `pyzotero` exception types from `pyzotero.zotero_errors`. Here are the available types, with their use cases and status codes (where applicable):
+
+*   `PyZoteroError`: Generic parent exception.
+*   `ParamNotPassedError`: Raised if a required parameter isn't passed.
+*   `CallDoesNotExistError`: Raised if the specified API call doesn't exist.
+*   `UnsupportedParamsError`: Raised when unsupported parameters are passed.
+*   `UserNotAuthorisedError`: Raised when the user is not allowed to retrieve the resource.
+*   `TooManyItemsError`: Raised when too many items are passed to a Write API method.
+*   `MissingCredentialsError`: Raised when an attempt is made to create a Zotero instance without providing both the user ID and the user key.
+*   `InvalidItemFieldsError`: Raised when an attempt is made to create/update items with invalid fields.
+*   `ResourceNotFoundError`: Raised when a resource (item, collection etc.) could not be found.
+*   `HTTPError`: Raised for miscellaneous URLLib errors.
+*   `CouldNotReachURLError`: Raised when a URL can't be reached.
+*   `ConflictError` (409): Raised when the target library is locked.
+*   `PreConditionFailedError` (412): Raised when the provided X-Zotero-Write-Token has already been submitted.
+*   `RequestEntityTooLargeError` (413): Raised when an upload would exceed the storage quota of the library owner.
+*   `PreConditionRequiredError` (428): Raised when If-Match or If-None-Match was not provided.
+*   `TooManyRequestsError` (429): Raised when there are too many unfinished uploads.
+*   `FileDoesNotExistError`: Raised when a file path to be attached can't be opened or doesn't exist.
+*   `TooManyRetriesError`: Raised after the backoff period for new requests exceeds 32 seconds.
+*   `UploadError`: Raised if the connection drops during upload or some other non-HTTP error code is returned.
+
+Where possible, any ``ZoteroError`` which is raised will preserve the underlying error in its ``__cause__`` and ``__context__`` properties, should you wish to work with these directly.

@@ -1,0 +1,66 @@
+---
+description: `pyzotero` documentation for working with tags
+globs: zotcli_commands/tag_cmds.py
+alwaysApply: false
+---
+
+This document contains the portion of the `pyzotero` documentation that corresponds to the tag-related functionality in our CLI wrapper.
+
+# Tags Commands
+
+## Retrieving Tags
+
+```python
+# Retrieve all tags from a library
+zot.tags([search/request parameters])
+```
+
+Returns a library's tags as a list of strings.
+
+```python
+# Retrieve tags from a specific item
+zot.item_tags(itemID[, search/request parameters])
+```
+
+Parameters:
+- `itemID`: a valid Zotero library Item ID
+
+Returns tags from a specific item as a list of strings.
+
+Example of returned tag data:
+```
+['Authority in literature', 'Errata']
+```
+
+## Deleting Tags
+
+```python
+# Delete one or more tags from your library
+zot.delete_tags(tag_a[, tag …])
+```
+
+Parameters:
+- `tag`: the tag(s) you'd like to delete
+
+You may also pass a list using `zot.delete_tags(*[tag_list])`
+
+## Adding Tags
+
+```python
+# Add one or more tags to an item
+zot.add_tags(item, tag[, tag …])
+```
+
+Parameters:
+- `item`: a dict containing item data
+- `tag`: the tag(s) you'd like to add to the item
+
+You may also pass a list using `zot.add_tags(item, *[tag_list])`
+
+Example:
+```python
+z = zot.top(limit=1)
+# we've now retrieved the most recent top-level item
+updated = zot.add_tags(z[0], 'tag1', 'tag2', 'tag3')
+# updated now contains a representation of the updated server item
+``` 

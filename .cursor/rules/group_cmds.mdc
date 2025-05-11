@@ -1,0 +1,56 @@
+---
+description: `pyzotero` documentation for working with groups
+globs: zotcli_commands/group_cmds.py
+alwaysApply: false
+---
+
+This document contains the portion of the `pyzotero` documentation that corresponds to the group-related functionality in our CLI wrapper.
+
+# Group Commands
+
+## Retrieving Groups
+
+```python
+# Retrieve Zotero groups
+zot.groups([search/request parameters])
+```
+
+Retrieve the Zotero group data to which the current library_id and api_key has access.
+
+Returns a list of dicts.
+
+Example of returned group data:
+```python
+[{u'data': {u'description': u'',
+            u'fileEditing': u'admins',
+            u'hasImage': 1,
+            u'id': 169947,
+            u'libraryEditing': u'admins',
+            u'libraryReading': u'members',
+            u'members': [1177919, 1408658],
+            u'name': u'smart_cities',
+            u'owner': 436,
+            u'type': u'Private',
+            u'url': u'',
+            u'version': 0},
+  u'id': 169947,
+  u'links': {u'alternate': {u'href': u'https://www.zotero.org/groups/169947',
+                            u'type': u'text/html'},
+             u'self': {u'href': u'https://api.zotero.org/groups/169947',
+                       u'type': u'application/json'}},
+  u'meta': {u'created': u'2013-05-22T11:22:46Z',
+            u'lastModified': u'2013-05-22T11:26:50Z',
+            u'numItems': 817},
+  u'version': 0}]
+```
+
+## API Key Information
+
+```python
+# Get information about API key
+zot.key_info()
+```
+
+Returns info about the user and group library permissions associated with the current Zotero instance, based on the API key. Together with `zot.groups()`, this allows all accessible resources to be determined.
+
+Returns a dict. 
