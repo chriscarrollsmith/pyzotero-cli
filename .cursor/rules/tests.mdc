@@ -3,4 +3,6 @@ description:
 globs: tests/**
 alwaysApply: false
 ---
+Import the Click command group like `from pyzotero_cli.zot_cli import zot`. Make sure to avoid name collisions with the `zot` object.
+
 Sequence arguments in CliRunner.invoke so that options for a parent command come before any subcommands.
