@@ -25,6 +25,7 @@ def file_group(ctx):
 def download_file(ctx, item_key_of_attachment, output):
     """Download a file attachment."""
     zot_instance = ctx.obj['zot']
+    expected_full_path = None # Initialize
     
     try:
         if output:
@@ -39,12 +40,16 @@ def download_file(ctx, item_key_of_attachment, output):
                 filename = os.path.basename(output_path)
                 if not target_dir: # If only filename is given, path is CWD
                     target_dir = os.getcwd()
+                # Construct the expected full path since zot.dump might return None here
+                expected_full_path = os.path.join(target_dir, filename)
             
             if not os.path.exists(target_dir):
                 os.makedirs(target_dir)
             
-            full_path = zot_instance.dump(item_key_of_attachment, filename=filename, path=target_dir)
-            click.echo(f"File downloaded to: {full_path}")
+            # Call dump, but use our constructed path for reporting if needed
+            returned_path = zot_instance.dump(item_key_of_attachment, filename=filename, path=target_dir)
+            report_path = returned_path if returned_path else expected_full_path
+            click.echo(f"File downloaded to: {report_path}")
 
         else:
             # No output specified, download to CWD with original filename
@@ -55,6 +60,7 @@ def download_file(ctx, item_key_of_attachment, output):
         click.echo(f"Error downloading file {item_key_of_attachment}: {e}", err=True)
         if "404" in str(e) and "Not Found for " in str(e):
              click.echo(f"Hint: Ensure '{item_key_of_attachment}' is the key of an attachment item, not its parent item.", err=True)
+        ctx.exit(1)
 
 @file_group.command(name='upload')
 @click.argument('paths_to_local_file', nargs=-1, type=click.Path(exists=True, dir_okay=False, readable=True), required=True)
@@ -92,16 +98,25 @@ def upload_files(ctx, paths_to_local_file, parent_item_id, filename_option):
         if response:
             click.echo("Upload results:")
             if 'success' in response and response['success']:
-                for key, details in response['success'].items():
-                    click.echo(f"  Successfully uploaded: {details.get('filename', key)} (Key: {key})")
+                # attachment_simple/both success value is a dict {index: {details}}
+                for _index, details in response['success'].items(): 
+                    # Use filename from details if available, fallback to index as key placeholder
+                    click.echo(f"  Successfully uploaded: {details.get('filename', '?')} (Key: {details.get('key', '?')})")
             if 'failure' in response and response['failure']:
-                for key, details in response['failure'].items():
-                    click.echo(f"  Failed to upload: {details.get('filename', key)}. Reason: {details.get('message', 'Unknown error')}", err=True)
-            # pyzotero attachment_simple/both might not return 'unchanged'. 
-            # The example return in docs is for upload_attachments.
-            # Let's dump the full response for clarity if not matching expected keys.
-            if not ('success' in response or 'failure' in response):
-                click.echo(json.dumps(response, indent=2))
+                for _index, details in response['failure'].items():
+                    click.echo(f"  Failed to upload: {details.get('filename', '?')}. Reason: {details.get('message', 'Unknown error')}", err=True)
+            if 'unchanged' in response and response['unchanged']:
+                # unchanged value is a list of dicts [{details}]
+                for details in response['unchanged']:
+                    # Use title from details if available, otherwise filename, then key
+                    display_name = details.get('title', details.get('filename', details.get('key', '?')))
+                    # If filename was used and it's a path, take only the basename
+                    if display_name == details.get('filename') and os.path.sep in display_name:
+                        display_name = os.path.basename(display_name)
+                    click.echo(f"  File unchanged on server: {display_name} (Key: {details.get('key', '?')})")
+            # Fallback for unexpected format
+            if not ('success' in response or 'failure' in response or 'unchanged' in response):
+                click.echo(f"  Unexpected response format: {json.dumps(response, indent=2)}", err=True)
         else:
             click.echo("No response from server or an issue occurred.", err=True)
 
@@ -158,7 +173,7 @@ def upload_batch_files(ctx, json_manifest_path):
                 click.echo(f"Warning: 'zotero_filename' is required for new attachments (entry at index {index}). Skipping.", err=True)
                 continue
             
-            template = zot_instance.item_template('attachment', link_mode='imported_file')
+            template = zot_instance.item_template('attachment', linkmode='imported_file')
             template['title'] = zotero_filename
             template['filename'] = zotero_filename # Zotero uses this for the stored filename
             if parent_item_id:
@@ -168,7 +183,9 @@ def upload_batch_files(ctx, json_manifest_path):
                 click.echo(f"Creating attachment item for '{zotero_filename}'...")
                 creation_response = zot_instance.create_items([template])
                 if creation_response['success']:
-                    new_item_key = list(creation_response['success'].keys())[0]
+                    # The key in the success dict is the index ('0', '1', etc.), 
+                    # the value is the actual Zotero item key.
+                    new_item_key = creation_response['success']['0'] # Assuming only one item created per entry
                     created_items_info.append({
                         'original_filename': zotero_filename,
                         'key': new_item_key,
@@ -208,13 +225,19 @@ def upload_batch_files(ctx, json_manifest_path):
                     uploaded_item_title = next((att['title'] for att in attachments_to_upload if att['key'] == item_key), item_key)
                     click.echo(f"  Successfully uploaded file for item: {uploaded_item_title} (Key: {item_key})")
             if upload_results.get('failure'):
-                for item_key, reason in upload_results['failure'].items(): # Assuming failure items are keys
+                for item_key, reason in upload_results['failure'].items():
                     failed_item_title = next((att['title'] for att in attachments_to_upload if att['key'] == item_key), item_key)
                     click.echo(f"  Failed to upload file for item: {failed_item_title} (Key: {item_key}). Reason: {reason}", err=True)
             if upload_results.get('unchanged'):
-                 for item_key in upload_results['unchanged']:
-                    unchanged_item_title = next((att['title'] for att in attachments_to_upload if att['key'] == item_key), item_key)
-                    click.echo(f"  File for item {unchanged_item_title} (Key: {item_key}) was unchanged on server.")
+                 for item_dict in upload_results['unchanged']: # Iterate through list of dicts
+                    item_key = item_dict.get('key')
+                    if item_key:
+                        # Use title stored during processing, fallback to key
+                        unchanged_item_title = next((att['title'] for att in attachments_to_upload if att['key'] == item_key), item_key)
+                        click.echo(f"  File for item {unchanged_item_title} (Key: {item_key}) was unchanged on server.")
+                    else:
+                        # Handle case where item dict might be missing key (unexpected)
+                        click.echo(f"  An unchanged item was reported without a key: {item_dict}", err=True)
         else:
             click.echo("No detailed results from batch upload operation.", err=True)
 

@@ -133,7 +133,7 @@ def item_type_fields(ctx, item_type, output):
 @click.option('--link-mode', type=click.Choice(['imported_file', 'imported_url', 'linked_file', 'linked_url']), help='Link mode for attachments.')
 @click.option('--output', type=click.Choice(['json']), default='json', show_default=True, help='Output format (only JSON supported).')
 @click.pass_context
-def item_template(ctx, item_type, link_mode, output): # Added output param for consistency, though only json
+def item_template(ctx, item_type, linkmode, output): # Added output param for consistency, though only json
     """Generate an item template (for item create)."""
     config = ctx.obj
     try:
@@ -143,8 +143,8 @@ def item_template(ctx, item_type, link_mode, output): # Added output param for c
                             locale=config.get('LOCALE', 'en-US'),
                             local=config.get('LOCAL', False))
         params = {}
-        if link_mode:
-            params['linkmode'] = link_mode
+        if linkmode:
+            params['linkmode'] = linkmode
         template_data = zot.item_template(item_type, **params)
         # Per spec, only JSON output. format_data_for_output will handle this.
         click.echo(format_data_for_output(template_data, 'json'))

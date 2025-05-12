@@ -199,12 +199,12 @@ def test_util_item_template(active_profile_with_real_credentials, runner: CliRun
     assert result_json_explicit.output == result_json_default.output
 
     # Test with --link-mode
-    link_mode_to_test = "imported_file"
-    result_link_mode = runner.invoke(zot, ['util', 'item-template', item_type_to_test, '--link-mode', link_mode_to_test])
-    print(f"item-template {item_type_to_test} with link_mode (json) output: {result_link_mode.output}")
-    assert result_link_mode.exit_code == 0
+    linkmode_to_test = "imported_file"
+    result_linkmode = runner.invoke(zot, ['util', 'item-template', item_type_to_test, '--link-mode', linkmode_to_test])
+    print(f"item-template {item_type_to_test} with linkmode (json) output: {result_linkmode.output}")
+    assert result_linkmode.exit_code == 0
     try:
-        data_link = json.loads(result_link_mode.output)
+        data_link = json.loads(result_linkmode.output)
         assert isinstance(data_link, dict)
         assert data_link.get('itemType') == item_type_to_test
         # Pyzotero's item_template with linkMode doesn't directly add 'linkMode' to the template itself
@@ -215,7 +215,7 @@ def test_util_item_template(active_profile_with_real_credentials, runner: CliRun
         # If we were testing 'attachment' item type, linkMode would be more directly visible.
         assert 'title' in data_link # Ensure basic template structure is still there
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON for item template {item_type_to_test} with link_mode: {result_link_mode.output}")
+        pytest.fail(f"Output was not valid JSON for item template {item_type_to_test} with linkmode: {result_linkmode.output}")
 
     # Test with a non-existent item type
     non_existent_item_type = "notAnItemType"
