@@ -5,77 +5,46 @@ import yaml
 import uuid
 from pyzotero import zotero as pyzotero_client
 from pyzotero_cli.zot_cli import zot
+from pyzotero.zotero import Zotero
+from pyzotero.zotero_errors import ResourceNotFoundError
+
+# Use the isolated_config fixture defined in main conftest.py
+pytestmark = pytest.mark.usefixtures("isolated_config")
 
 # Helper to get a PyZotero client instance using credentials
-def get_zot_client(credentials):
-    return pyzotero_client.Zotero(
-        credentials['library_id'],
-        credentials['library_type'],
-        credentials['api_key']
-    )
+def get_zot_client(creds):
+    return Zotero(creds['library_id'], creds['library_type'], creds['api_key'])
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def temp_tag_in_library(real_api_credentials):
-    """Ensures a unique tag exists in the library for testing and cleans it up."""
+    """Creates a temporary tag in the real Zotero library and cleans up."""
     zot_api_client = get_zot_client(real_api_credentials)
-    tag_name = f"temp-tag-{uuid.uuid4()}"
-
-    # Add tag to a temporary item to make it appear in library tags
+    tag_name = f"pytest_temp_tag_{uuid.uuid4()}"
+    # Add the tag via an item (simplest way to ensure tag exists for testing list/delete)
     item_template = zot_api_client.item_template('note')
-    item_template['note'] = f"Temporary note for tag {tag_name}"
     item_template['tags'] = [{'tag': tag_name}]
-    
-    resp = zot_api_client.create_items([item_template])
-    if 'successful' not in resp or not resp['successful']:
-        pytest.fail(f"Failed to create item for temporary tag {tag_name}: {resp}")
-    item_key = list(resp['successful'].keys())[0]
-    item_obj = zot_api_client.item(item_key)
+    item_resp = zot_api_client.create_items([item_template])
+    item_key = None
+    if item_resp and 'successful' in item_resp and item_resp['successful']:
+        item_key = list(item_resp['successful'].keys())[0]
+        created_item = zot_api_client.item(item_key)
+    else:
+        pytest.fail(f"Failed to create temporary item needed for tag fixture setup: {item_resp}")
 
-    yield tag_name
+    yield tag_name # Yield the tag name to the test
 
     # Cleanup
     try:
-        zot_api_client.delete_item(item_obj)
+        zot_api_client.delete_tags(tag_name) # Delete the tag directly
+    except ResourceNotFoundError:
+        pass # Tag might have been deleted by the test itself
     except Exception as e:
-        print(f"Warning: Failed to delete temporary item {item_key} during tag cleanup: {e}")
-    try:
-        zot_api_client.delete_tags(tag_name)
-    except Exception as e:
-        print(f"Warning: Failed to delete temporary tag {tag_name} during cleanup: {e}")
-
-@pytest.fixture
-def temp_item_with_tags(real_api_credentials):
-    """Creates a temporary item with specific tags and cleans it up."""
-    zot_api_client = get_zot_client(real_api_credentials)
-    tag1_name = f"item-tag1-{uuid.uuid4()}"
-    tag2_name = f"item-tag2-{uuid.uuid4()}"
-    tags_on_item = sorted([tag1_name, tag2_name])
-    
-    item_template = zot_api_client.item_template('journalArticle')
-    item_template['title'] = f"Test Item for Tags {uuid.uuid4()}"
-    item_template['tags'] = [{'tag': t} for t in tags_on_item]
-    
-    resp = zot_api_client.create_items([item_template])
-    if not resp or 'successful' not in resp or not resp['successful']:
-        pytest.fail(f"Failed to create test item with tags: {resp}")
-        
-    item_key = list(resp['successful'].keys())[0]
-    created_item_data = zot_api_client.item(item_key)
-
-    yield item_key, tags_on_item
-
-    # Teardown
-    try:
-        zot_api_client.delete_item(created_item_data)
-    except Exception as e:
-        print(f"Error during cleanup, deleting item {item_key}: {e}")
-    # Tags on items are removed when item is deleted.
-    # Global tags might persist; attempt to clean them if they were unique to this test.
-    try:
-        zot_api_client.delete_tags(*tags_on_item)
-    except Exception:
-        pass # Ignore errors if tags are already gone or were never global
-
+        print(f"Error during tag fixture cleanup (deleting tag {tag_name}): {e}")
+    if item_key:
+        try:
+            zot_api_client.delete_item(created_item) # Delete the temporary item
+        except Exception as e:
+            print(f"Error during tag fixture cleanup (deleting item {item_key}): {e}")
 
 # Tests for 'zot-cli tag list'
 def test_list_tags_default_output(active_profile_with_real_credentials, temp_tag_in_library, runner: CliRunner):

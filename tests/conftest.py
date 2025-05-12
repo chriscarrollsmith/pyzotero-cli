@@ -4,6 +4,12 @@ import shutil
 import configparser
 from pyzotero_cli.zot_cli import CONFIG_FILE, CONFIG_DIR
 from click.testing import CliRunner
+import json
+import uuid
+from pyzotero import zotero
+
+# Import the main click command group
+from pyzotero_cli.zot_cli import zot
 
 @pytest.fixture(scope="function")
 def isolated_config():
@@ -33,7 +39,6 @@ def isolated_config():
             if not os.listdir(CONFIG_DIR):  # Check if empty
                 shutil.rmtree(CONFIG_DIR)
         except OSError:
-            # Log or handle if necessary, e.g., directory not empty unexpectedly
             pass
 
 @pytest.fixture(scope="session")
@@ -59,25 +64,17 @@ def active_profile_with_real_credentials(isolated_config, real_api_credentials):
     and sets this profile as the current active one.
     Yields the name of the configured profile.
     """
-    # isolated_config ensures CONFIG_FILE is clean and CONFIG_DIR exists.
-    # real_api_credentials provides details and handles skipping.
-    
-    profile_name = "ci_e2e_profile"  # A consistent name for this test profile
+    profile_name = "ci_e2e_profile"
     config = configparser.ConfigParser()
-    
-    # CONFIG_FILE path comes from pyzotero_cli.zot_cli
-    # isolated_config ensures the directory exists and the file is initially clear.
-
-    section_name = f"profile.{profile_name}" # Non-default profiles are prefixed
+    section_name = f"profile.{profile_name}"
 
     config.add_section(section_name)
     config[section_name]['library_id'] = real_api_credentials['library_id']
     config[section_name]['api_key'] = real_api_credentials['api_key']
     config[section_name]['library_type'] = real_api_credentials['library_type']
-    config[section_name]['locale'] = 'en-US' # Default locale
-    config[section_name]['local_zotero'] = 'False' # For API tests
+    config[section_name]['locale'] = 'en-US'
+    config[section_name]['local_zotero'] = 'False'
 
-    # Set this profile as the current active profile
     if not config.has_section('zotcli'):
         config.add_section('zotcli')
     config['zotcli']['current_profile'] = profile_name
@@ -87,8 +84,64 @@ def active_profile_with_real_credentials(isolated_config, real_api_credentials):
         
     return profile_name 
 
-
 # Fixture to provide the Click CliRunner, always used
 @pytest.fixture(scope="session", autouse=True)
 def runner() -> CliRunner:
     return CliRunner()
+
+# Fixture moved from test_tag_cmds.py - uses pyzotero directly
+@pytest.fixture(scope="function")
+def temp_item_with_tags(real_api_credentials):
+    """Creates a temporary item with specific tags and cleans it up."""
+    # Create client directly using credentials
+    zot_api_client = zotero.Zotero(
+        library_id=real_api_credentials['library_id'],
+        library_type=real_api_credentials['library_type'],
+        api_key=real_api_credentials['api_key']
+    )
+    tag1_name = f"item-tag1-{uuid.uuid4()}"
+    tag2_name = f"item-tag2-{uuid.uuid4()}"
+    tags_on_item = sorted([tag1_name, tag2_name])
+    
+    item_template = zot_api_client.item_template('journalArticle')
+    item_template['title'] = f"Test Item for Tags {uuid.uuid4()}"
+    item_template['tags'] = [{'tag': t} for t in tags_on_item]
+    
+    created_item_details = None # Store the dict from the successful response
+    actual_item_key = None # Store the actual Zotero item key
+    try:
+        resp = zot_api_client.create_items([item_template])
+        if not resp or 'successful' not in resp or not resp['successful']:
+            pytest.fail(f"Failed to create test item with tags: {resp}")
+            
+        # Correctly extract the actual item key and details from the 'successful' dict
+        # The key '0' is just the index from the input list
+        result_index = list(resp['successful'].keys())[0] 
+        created_item_details = resp['successful'][result_index] # Get the dict with key, version, etc.
+        actual_item_key = created_item_details['key'] 
+
+        yield actual_item_key, tags_on_item # Yield the CORRECT key
+
+    finally:
+        # Teardown
+        if created_item_details: # Use the dict directly, which includes key and version
+            try:
+                zot_api_client.delete_item(created_item_details)
+            except Exception as e:
+                print(f"Error during cleanup, deleting item {actual_item_key}: {e}")
+        elif actual_item_key: # Fallback if item creation succeeded but somehow details are missing
+             try:
+                 # Attempt delete with just key and version 0 (might fail if modified)
+                 zot_api_client.delete_item({'key': actual_item_key, 'version': 0}) 
+             except Exception as e:
+                 print(f"Error during fallback cleanup for item {actual_item_key}: {e}")
+
+        # Tags on items are removed when item is deleted.
+        # Global tags might persist; attempt to clean them if they were unique to this test.
+        # This might fail if tags weren't created globally, which is fine.
+        try:
+            # Only delete tags if item creation was successful
+            if actual_item_key: 
+                zot_api_client.delete_tags(*tags_on_item)
+        except Exception:
+            pass # Ignore errors if tags are already gone or were never global 
