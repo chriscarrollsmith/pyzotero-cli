@@ -1,6 +1,6 @@
 ---
 description: `pyzotero` documentation for working with files and attachments
-globs: zotcli_commands/file_cmds.py
+globs: pyzotero_cli/file_cmds.py
 alwaysApply: false
 ---
 

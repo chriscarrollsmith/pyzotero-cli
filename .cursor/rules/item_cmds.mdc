@@ -1,6 +1,6 @@
 ---
 description: `pyzotero` documentation for working with items
-globs: zotcli_commands/item_cmds.py
+globs: pyzotero_cli/item_cmds.py
 alwaysApply: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 description: `pyzotero` documentation for working with tags
-globs: zotcli_commands/tag_cmds.py
+globs: pyzotero_cli/tag_cmds.py
 alwaysApply: false
 ---
 

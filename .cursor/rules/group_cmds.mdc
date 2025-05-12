@@ -1,6 +1,6 @@
 ---
 description: `pyzotero` documentation for working with groups
-globs: zotcli_commands/group_cmds.py
+globs: pyzotero_cli/group_cmds.py
 alwaysApply: false
 ---
 

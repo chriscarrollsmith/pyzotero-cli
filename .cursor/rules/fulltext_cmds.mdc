@@ -1,6 +1,6 @@
 ---
 description: `pyzotero` documentation for working with full-text content
-globs: zotcli_commands/fulltext_cmds.py
+globs: pyzotero_cli/fulltext_cmds.py
 alwaysApply: false
 ---
 

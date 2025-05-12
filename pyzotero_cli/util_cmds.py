@@ -1,6 +1,6 @@
 import click
 from pyzotero import zotero
-from zotcli_commands.utils import format_data_for_output, handle_zotero_exceptions_and_exit
+from pyzotero_cli.utils import format_data_for_output, handle_zotero_exceptions_and_exit
 from typing import cast
 from tabulate import tabulate
 

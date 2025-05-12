@@ -1,6 +1,6 @@
 ---
 description: `pyzotero` documentation for working with collections
-globs: zotcli_commands/collection_cmds.py
+globs: pyzotero_cli/collection_cmds.py
 alwaysApply: false
 ---
 

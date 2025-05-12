@@ -5,3 +5,13 @@
 .venv
 .env
 artifacts/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
+*.egg-info/

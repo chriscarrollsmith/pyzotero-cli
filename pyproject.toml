@@ -1,7 +1,7 @@
 [project]
 name = "pyzotero-cli"
 version = "0.1.0"
-description = "Add your description here"
+description = "A CLI wrapper for pyzotero"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -9,4 +9,16 @@ dependencies = [
     "pyyaml>=6.0.2",
     "pyzotero>=1.6.11",
     "tabulate>=0.9.0",
+    "pytest>=7.0"
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.5",
+]
+
+[project.scripts]
+zot = "pyzotero_cli.zot_cli:zot"
+
+[tool.setuptools.packages.find]
+include = ["pyzotero_cli"]

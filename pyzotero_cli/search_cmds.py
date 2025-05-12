@@ -1,7 +1,7 @@
 import click
 import json
 from pyzotero import zotero
-from zotcli_commands.utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit
+from pyzotero_cli.utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit
 
 @click.group('search')
 @click.pass_context

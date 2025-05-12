@@ -1,6 +1,6 @@
 ---
 description: `pyzotero` documentation for searching and querying
-globs: zotcli_commands/search_cmds.py
+globs: pyzotero_cli/search_cmds.py
 alwaysApply: false
 ---
 

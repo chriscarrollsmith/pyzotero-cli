@@ -1,6 +1,6 @@
 ---
 description: `pyzotero` general documentation and utilities
-globs: zotcli_commands/utils.py
+globs: pyzotero_cli/utils.py
 alwaysApply: false
 ---
 

@@ -1,7 +1,7 @@
 import click
 import os
 import configparser
-from zotcli_commands.utils import common_options # Import common_options
+from pyzotero_cli.utils import common_options # Import common_options
 
 # Define the configuration directory and file path
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".config", "zotcli")
@@ -68,20 +68,77 @@ def zot(ctx, profile, api_key, library_id, library_type, local, verbose, debug, 
         ctx.obj['ACTIVE_PROFILE_NAME'] = active_profile_name
         ctx.obj['PROFILE_CONFIG'] = config[f"profile.{active_profile_name}"]
 
+    # Determine effective configuration
+    # Precedence: CLI > Environment Variable > Profile Config
 
-    # Override with env vars if present
-    ctx.obj['API_KEY'] = os.environ.get('ZOTERO_API_KEY', api_key or ctx.obj['PROFILE_CONFIG'].get('api_key'))
-    ctx.obj['LIBRARY_ID'] = os.environ.get('ZOTERO_LIBRARY_ID', library_id or ctx.obj['PROFILE_CONFIG'].get('library_id'))
-    ctx.obj['LIBRARY_TYPE'] = os.environ.get('ZOTERO_LIBRARY_TYPE', library_type or ctx.obj['PROFILE_CONFIG'].get('library_type'))
+    # Start with profile config values as baseline
+    final_api_key = ctx.obj['PROFILE_CONFIG'].get('api_key')
+    final_library_id = ctx.obj['PROFILE_CONFIG'].get('library_id')
+    final_library_type = ctx.obj['PROFILE_CONFIG'].get('library_type')
+
+    # Override with environment variables if they are set (and valid for type)
+    env_api_key = os.environ.get('ZOTERO_API_KEY')
+    if env_api_key:
+        final_api_key = env_api_key
+
+    env_library_id = os.environ.get('ZOTERO_LIBRARY_ID')
+    if env_library_id:
+        final_library_id = env_library_id
+
+    env_library_type = os.environ.get('ZOTERO_LIBRARY_TYPE')
+    if env_library_type and env_library_type in ['user', 'group']:
+        final_library_type = env_library_type
+    # If env_library_type is set but invalid, it does not override a potentially valid final_library_type from profile.
+
+    # Override with CLI options if they were actually provided (parameters to this function)
+    if api_key is not None:  # CLI --api-key option
+        final_api_key = api_key
+    if library_id is not None:  # CLI --library-id option
+        final_library_id = library_id
+    if library_type is not None:  # CLI --library-type option
+        final_library_type = library_type
+        
+    ctx.obj['API_KEY'] = final_api_key
+    ctx.obj['LIBRARY_ID'] = final_library_id
+    ctx.obj['LIBRARY_TYPE'] = final_library_type
+    
+    # Locale and Local flag (original logic for these seemed okay, but let's ensure consistency if needed)
+    # For Locale: CLI (--locale, though not a direct zot option) > ENV > Profile > Default
+    # For Local: CLI (--local flag) > ENV > Profile > Default
+    
+    # Current zot() does not have a --locale option, it's per profile.
+    # So LOCALE is ENV > Profile > Default
     ctx.obj['LOCALE'] = os.environ.get('ZOTERO_LOCALE', ctx.obj['PROFILE_CONFIG'].get('locale', 'en-US'))
-    ctx.obj['LOCAL'] = os.environ.get('ZOTERO_USE_LOCAL', str(local or ctx.obj['PROFILE_CONFIG'].getboolean('local_zotero', False))).lower() == 'true'
+    
+    # For LOCAL flag (local parameter is from --local CLI flag on zot command)
+    profile_local_str = str(ctx.obj['PROFILE_CONFIG'].getboolean('local_zotero', False))
+    env_local_str = os.environ.get('ZOTERO_USE_LOCAL')
 
-from zotcli_commands.item_cmds import item_group # Import the item command group
-from zotcli_commands.collection_cmds import collection_group # Import the collection command group
-from zotcli_commands.tag_cmds import tag_group # Import the tag command group
-from zotcli_commands.file_cmds import file_group # Import the file command group
-from zotcli_commands.search_cmds import search_group # Import the search command group
-from zotcli_commands.fulltext_cmds import fulltext_group # Import the fulltext command group
+    if local: # CLI flag --local takes highest precedence
+        ctx.obj['LOCAL'] = True
+    elif env_local_str is not None:
+        ctx.obj['LOCAL'] = env_local_str.lower() == 'true'
+    else:
+        ctx.obj['LOCAL'] = profile_local_str.lower() == 'true'
+
+from pyzotero_cli.item_cmds import item_group # Import the item command group
+from pyzotero_cli.collection_cmds import collection_group # Import the collection command group
+from pyzotero_cli.tag_cmds import tag_group # Import the tag command group
+from pyzotero_cli.file_cmds import file_group # Import the file command group
+from pyzotero_cli.search_cmds import search_group # Import the search command group
+from pyzotero_cli.fulltext_cmds import fulltext_group # Import the fulltext command group
+from pyzotero_cli.group_cmds import group_group # Import the group command group
+from pyzotero_cli.util_cmds import util_group # Import the utility command group
+
+# Add command groups to the main zot application
+zot.add_command(item_group, name='items')
+zot.add_command(collection_group, name='collections')
+zot.add_command(tag_group, name='tags')
+zot.add_command(file_group, name='files')
+zot.add_command(search_group, name='search')
+zot.add_command(fulltext_group, name='fulltext')
+zot.add_command(group_group, name='groups')
+zot.add_command(util_group, name='utils')
 
 @zot.group()
 def configure():
@@ -120,10 +177,9 @@ def setup_profile(ctx, profile_name):
     if 'zotcli' not in config:
         config.add_section('zotcli')
     
-    # Set as current profile if it's the default or the only one
-    if profile_name == 'default' or not config.has_option('zotcli', 'current_profile'):
-        config['zotcli']['current_profile'] = profile_name
-        click.echo(f"Profile '{profile_name}' set as the current active profile.")
+    # Always set the newly configured or modified profile as the current active one.
+    config['zotcli']['current_profile'] = profile_name
+    click.echo(f"Profile '{profile_name}' set as the current active profile.")
 
     save_config(config)
     click.echo(f"Configuration for profile '{profile_name}' saved to {CONFIG_FILE}")
@@ -191,7 +247,7 @@ def list_profiles_command():
         elif p_name == current_profile:
             click.echo(f"* {p_name} (active)")
         elif p_name.endswith(' (actual section)'):
-             click.echo(f"  {p_name.replace(' (actual section)', '')}")
+             click.echo(f"  {p_name}")
         elif p_name.endswith(' (implicit)'):
             pass # Handled above
         else:
@@ -228,10 +284,4 @@ def current_profile_command(ctx, name):
         click.echo(current)
 
 if __name__ == '__main__':
-    zot.add_command(item_group)
-    zot.add_command(collection_group)
-    zot.add_command(tag_group)
-    zot.add_command(file_group)
-    zot.add_command(search_group)
-    zot.add_command(fulltext_group)
     zot() 

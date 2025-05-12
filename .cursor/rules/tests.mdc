@@ -1,0 +1,6 @@
+---
+description: 
+globs: tests/**
+alwaysApply: false
+---
+Sequence arguments in CliRunner.invoke so that options for a parent command come before any subcommands.
