@@ -3,6 +3,38 @@ description:
 globs: tests/**
 alwaysApply: false
 ---
-Import the Click command group like `from pyzotero_cli.zot_cli import zot`. Make sure to avoid name collisions with the `zot` object.
+At this initial stage of the project, tests are intended to be end-to-end integration tests using real API credentials and real API calls to make sure that dependencies behave as our code expects. Zotero resources should be set up and torn down as necessary.
 
-Sequence arguments in CliRunner.invoke so that options for a parent command come before any subcommands.
+Prefix pytest commands with `uv run` to make sure the test is run in the virtual environment. To limit information overload, run either a single test file or a single test: `uv run pytest tests/<test_file_name.py>::<test_name>`
+
+Import the Click command group like `from pyzotero_cli.zot_cli import zot`. Avoid name collisions with the `zot` object.
+
+Sequence arguments in `CliRunner.invoke` so that options for a parent command come before any subcommands.
+
+Tests should validate, among other things, that the default output format is valid JSON, correctly serialized, and not just a Python dictionary coerced to string.
+
+The following Pytest fixtures are available in `conftest.py`:
+
+- **`isolated_config` (scope="function")**  
+  - **Purpose:** Isolates the config file for each test to prevent interference.  
+  - **Use Case:** Any test that reads or writes to the `zot-cli` config file.  
+
+- **`real_api_credentials` (scope="session")**  
+  - **Purpose:** Provides real Zotero API credentials from environment variables.  
+  - **Use Case:** Tests requiring real API access (e.g., creating/deleting items or tags).  
+
+- **`active_profile_with_real_credentials` (scope="function")**  
+  - **Purpose:** Sets up and activates a profile with real API credentials.  
+  - **Use Case:** Tests that rely on a pre-configured active profile.  
+
+- **`temp_tag_in_library` (scope="function")**  
+  - **Purpose:** Creates and cleans up a temporary tag in the Zotero library.  
+  - **Use Case:** Tag-related tests (e.g., listing or deleting tags).  
+
+- **`temp_item_with_tags` (scope="function")**  
+  - **Purpose:** Creates and cleans up a temporary item with tags.  
+  - **Use Case:** Tests for item-tag relationships (e.g., listing tags for an item).
+
+- **`runner` (scope="session")**
+  - **Purpose:** Creates the Click `CliRunner` object.
+  - **Use case:** Simulates client for running user CLI commands.

@@ -1,31 +1,28 @@
 import pytest
-from click.testing import CliRunner
 from pyzotero_cli.zot_cli import zot, CONFIG_FILE
 import configparser
 import json
+from click.testing import CliRunner
 
-def test_zot_help():
-    runner = CliRunner()
+
+def test_zot_help(runner: CliRunner):
     result = runner.invoke(zot, ['--help'])
     assert result.exit_code == 0
     assert "Usage: zot [OPTIONS] COMMAND [ARGS]..." in result.output
     assert "A CLI for interacting with Zotero libraries via Pyzotero." in result.output
 
-def test_configure_list_profiles_no_config(isolated_config):
-    runner = CliRunner()
+def test_configure_list_profiles_no_config(isolated_config, runner: CliRunner):
     result = runner.invoke(zot, ['configure', 'list-profiles'])
     assert result.exit_code == 0
     # Expecting implicit default when no config file exists
     assert "* default (active, not explicitly configured)" in result.output
 
-def test_configure_current_profile_no_config(isolated_config):
-    runner = CliRunner()
+def test_configure_current_profile_no_config(isolated_config, runner: CliRunner):
     result = runner.invoke(zot, ['configure', 'current-profile'])
     assert result.exit_code == 0
     assert "default" in result.output.strip()
 
-def test_configure_setup_new_profile(isolated_config, monkeypatch):
-    runner = CliRunner()
+def test_configure_setup_new_profile(isolated_config, monkeypatch, runner: CliRunner):
     inputs = iter([
         'test_library_id',    # Library ID
         'user',               # Library Type
@@ -52,8 +49,7 @@ def test_configure_setup_new_profile(isolated_config, monkeypatch):
     assert config[f"profile.testprofile"]['locale'] == 'en-GB'
     assert config['zotcli']['current_profile'] == 'testprofile'
 
-def test_configure_setup_default_profile(isolated_config, monkeypatch):
-    runner = CliRunner()
+def test_configure_setup_default_profile(isolated_config, monkeypatch, runner: CliRunner):
     inputs = iter([
         'default_lib_id',     # Library ID
         'group',              # Library Type
@@ -80,8 +76,7 @@ def test_configure_setup_default_profile(isolated_config, monkeypatch):
     assert config['default']['locale'] == 'fr-FR'
     assert config['zotcli']['current_profile'] == 'default'
 
-def test_configure_set_and_get_value(isolated_config):
-    runner = CliRunner()
+def test_configure_set_and_get_value(isolated_config, runner: CliRunner):
     # First, set up a default profile to modify
     result_setup = runner.invoke(zot, ['configure', 'setup', '--profile', 'myprof'], input="test_id\nuser\ntest_key\nn\nen-US\n")
     assert result_setup.exit_code == 0
@@ -109,8 +104,7 @@ def test_configure_set_and_get_value(isolated_config):
     assert result_get_local_false.exit_code == 0
     assert result_get_local_false.output.strip() == 'False'
 
-def test_configure_get_non_existent_key(isolated_config):
-    runner = CliRunner()
+def test_configure_get_non_existent_key(isolated_config, runner: CliRunner):
     result_setup = runner.invoke(zot, ['configure', 'setup', '--profile', 'another'], input="id\nuser\nkey\nn\n\n") # Empty locale
     assert result_setup.exit_code == 0
 
@@ -118,8 +112,7 @@ def test_configure_get_non_existent_key(isolated_config):
     assert result.exit_code == 0 # The command itself succeeds but prints to stderr
     assert "Key 'non_existent_key' not found in profile 'another'." in result.output # click.echo with err=True prints to stdout in CliRunner
 
-def test_configure_list_profiles_multiple(isolated_config, monkeypatch):
-    runner = CliRunner()
+def test_configure_list_profiles_multiple(isolated_config, monkeypatch, runner: CliRunner):
     # Profile 1: test1
     inputs1 = iter(['id1', 'user', 'key1', 'n', 'en-US'])
     monkeypatch.setattr('click.prompt', lambda *args, **kwargs: next(inputs1))
@@ -149,8 +142,7 @@ def test_configure_list_profiles_multiple(isolated_config, monkeypatch):
     assert "  default (actual section)" in output # changed from '  default' to match code logic
     assert "  test2" in output
 
-def test_configure_current_profile_set_and_get(isolated_config, monkeypatch):
-    runner = CliRunner()
+def test_configure_current_profile_set_and_get(isolated_config, monkeypatch, runner: CliRunner):
     # Setup a couple of profiles
     inputs_p1 = iter(['id1', 'user', 'key1', 'n', 'en-US'])
     monkeypatch.setattr('click.prompt', lambda *args, **kwargs: next(inputs_p1))
@@ -187,7 +179,7 @@ def test_configure_current_profile_set_and_get(isolated_config, monkeypatch):
     assert result_get3.exit_code == 0
     assert result_get3.output.strip() == 'prof1'
 
-def test_list_items_real_api(isolated_config, real_api_credentials):
+def test_list_items_real_api(isolated_config, real_api_credentials, runner: CliRunner):
     """
     Tests 'zot items list --limit 1' using real API calls.
     Relies on Pyzotero picking up credentials from environment variables
@@ -195,8 +187,6 @@ def test_list_items_real_api(isolated_config, real_api_credentials):
     The 'isolated_config' fixture ensures no prior config interferes.
     The 'real_api_credentials' fixture provides credentials and handles skipping.
     """
-    runner = CliRunner()
-
     # This test specifically checks the --library-type global option.
     # We'll use 'user' for this test, assuming ZOTERO_LIBRARY_ID is for a user library
     # if real_api_credentials['library_type'] is also 'user'.
@@ -242,14 +232,12 @@ def test_list_items_real_api(isolated_config, real_api_credentials):
     except json.JSONDecodeError:
         pytest.fail(f"Output was not valid JSON: {result.output}")
 
-def test_list_items_with_active_profile(active_profile_with_real_credentials, real_api_credentials):
+def test_list_items_with_active_profile(active_profile_with_real_credentials, real_api_credentials, runner: CliRunner):
     """
     Tests 'zot items list --limit 1' using a pre-configured active profile.
     The 'active_profile_with_real_credentials' fixture sets up this profile.
     This test ensures commands work correctly when relying on the active profile configuration.
     """
-    runner = CliRunner()
-    
     # The active_profile_with_real_credentials fixture has already set up and activated
     # a profile (e.g., "ci_e2e_profile") with the credentials from real_api_credentials.
     # So, we don't need to pass --api-key, --library-id, or --library-type here.

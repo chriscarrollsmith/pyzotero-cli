@@ -1,5 +1,5 @@
 import click
-from .utils import common_options # _prepare_pyzotero_params will be defined locally
+from .utils import common_options, format_data_for_output # _prepare_pyzotero_params will be defined locally
 from pyzotero import zotero
 from pyzotero.zotero_errors import PyZoteroError, HTTPError, ResourceNotFoundError, PreConditionFailedError
 import json
@@ -73,7 +73,7 @@ def collection_list(ctx, top, limit, start, since, sort, direction, output, quer
             results = zot_client.collections_top(**api_params)
         else:
             results = zot_client.collections(**api_params)
-        click.echo(str(results)) # Basic output for now
+        click.echo(format_data_for_output(results, output)) # Use format_data_for_output
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
@@ -89,7 +89,7 @@ def collection_get(ctx, collection_key_or_id, limit, start, since, sort, directi
     api_params = _prepare_pyzotero_params() 
     try:
         results = zot_client.collection(collection_key_or_id, **api_params)
-        click.echo(str(results))
+        click.echo(format_data_for_output(results, output)) # Use format_data_for_output
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
@@ -105,7 +105,7 @@ def collection_subcollections(ctx, parent_collection_key_or_id, limit, start, si
     api_params = _prepare_pyzotero_params(limit, start, since, sort, direction, query, qmode, filter_tags, filter_item_type)
     try:
         results = zot_client.collections_sub(parent_collection_key_or_id, **api_params)
-        click.echo(str(results))
+        click.echo(format_data_for_output(results, output)) # Use format_data_for_output
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
@@ -124,7 +124,7 @@ def collection_all(ctx, parent_id, limit, start, since, sort, direction, output,
             results = zot_client.all_collections(collectionID=parent_id, **api_params)
         else:
             results = zot_client.all_collections(**api_params)
-        click.echo(str(results))
+        click.echo(format_data_for_output(results, output)) # Use format_data_for_output
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
@@ -144,7 +144,7 @@ def collection_items(ctx, collection_key_or_id, top, limit, start, since, sort, 
             results = zot_client.collection_items_top(collection_key_or_id, **api_params)
         else:
             results = zot_client.collection_items(collection_key_or_id, **api_params)
-        click.echo(str(results))
+        click.echo(format_data_for_output(results, output)) # Use format_data_for_output
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
@@ -174,18 +174,17 @@ def collection_item_count(ctx, collection_key_or_id):
         click.echo(f"An unexpected error occurred: {e}", err=True)
 
 @collection_group.command(name="versions")
-@click.option('--since', 'since_version', help='Retrieve objects modified after a library version.')
-@click.option('--output', 'output_format', type=click.Choice(['json', 'yaml']), default='json', show_default=True, help='Output format.')
+@click.option('--since', 'since_version', type=int, help='Retrieve objects modified after a library version.')
+@common_options
 @click.pass_context
-def collection_versions(ctx, since_version, output_format):
+def collection_versions(ctx, since_version, limit, start, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Get collection version information."""
     zot_client = ctx.obj['zotero_client']
-    params = {}
-    if since_version:
-        params['since'] = since_version
+    # Prepare parameters: collection_versions only accepts 'since' according to pyzotero docs
+    params = _prepare_pyzotero_params(since=since_version) 
     try:
         results = zot_client.collection_versions(**params)
-        click.echo(str(results))
+        click.echo(format_data_for_output(results, output)) # Use format_data_for_output
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
@@ -194,8 +193,9 @@ def collection_versions(ctx, since_version, output_format):
 @collection_group.command(name="create")
 @click.option('--name', 'collection_names', multiple=True, required=True, help='Name of the collection to create (can be specified multiple times).')
 @click.option('--parent-id', 'parent_collection_id', help='ID of the parent collection for these new collection(s).')
+@common_options
 @click.pass_context
-def collection_create(ctx, collection_names, parent_collection_id):
+def collection_create(ctx, collection_names, parent_collection_id, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Create one or more new Zotero collections."""
     zot_client = ctx.obj['zotero_client']
     payloads = []
@@ -210,7 +210,7 @@ def collection_create(ctx, collection_names, parent_collection_id):
         
     try:
         results = zot_client.create_collections(payloads)
-        click.echo(str(results))
+        click.echo(format_data_for_output(results, output)) # Use format_data_for_output
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
@@ -222,8 +222,9 @@ def collection_create(ctx, collection_names, parent_collection_id):
 @click.option('--parent-id', 'new_parent_id', help='New parent ID for the collection (set to empty string "" to make it top-level, or boolean false).')
 @click.option('--from-json', 'from_json_input', help='Path to a JSON file or a JSON string for complex updates.')
 @click.option('--last-modified', 'last_modified_option', help='If-Unmodified-Since-Version header. Can be a version number or "auto".')
+@common_options
 @click.pass_context
-def collection_update(ctx, collection_key_or_id, new_name, new_parent_id, from_json_input, last_modified_option):
+def collection_update(ctx, collection_key_or_id, new_name, new_parent_id, from_json_input, last_modified_option, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Update an existing Zotero collection."""
     if not new_name and new_parent_id is None and not from_json_input:
         raise click.UsageError('Either --name, --parent-id, or --from-json must be provided for an update.')
@@ -295,7 +296,7 @@ def collection_update(ctx, collection_key_or_id, new_name, new_parent_id, from_j
         collection_to_update['key'] = collection_key_or_id
 
         results = zot_client.update_collection(collection_to_update)
-        click.echo(str(results))
+        click.echo(format_data_for_output(results, output)) # Use format_data_for_output
 
     except ResourceNotFoundError:
         click.echo(f"Collection '{collection_key_or_id}' not found.", err=True)
@@ -310,8 +311,9 @@ def collection_update(ctx, collection_key_or_id, new_name, new_parent_id, from_j
 @click.argument('collection_key_or_id', nargs=-1, required=True)
 @click.option('--last-modified', 'last_modified_option', help='If-Unmodified-Since-Version header. Can be a version number or "auto".')
 @click.option('--force', is_flag=True, help='Confirm deletion without prompting.')
+@common_options
 @click.pass_context
-def collection_delete(ctx, collection_key_or_id, last_modified_option, force):
+def collection_delete(ctx, collection_key_or_id, last_modified_option, force, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Delete one or more Zotero collections."""
     if not collection_key_or_id:
         raise click.UsageError("At least one COLLECTION_KEY_OR_ID must be provided.")
@@ -366,13 +368,14 @@ def collection_delete(ctx, collection_key_or_id, last_modified_option, force):
         except Exception as e:
             results_summary.append({key_str_val: f"An unexpected error occurred for collection '{key_str_val}': {e}"})
             
-    click.echo(str(results_summary))
+    click.echo(format_data_for_output(results_summary, output)) # Use format_data_for_output
 
 @collection_group.command(name="add-item")
 @click.argument('collection_key_or_id', required=True)
 @click.argument('item_key_or_id', nargs=-1, required=True)
+@common_options
 @click.pass_context
-def collection_add_item(ctx, collection_key_or_id, item_key_or_id):
+def collection_add_item(ctx, collection_key_or_id, item_key_or_id, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Add item(s) to a collection by modifying the item's 'collections' field."""
     if not item_key_or_id:
         raise click.UsageError("At least one ITEM_KEY_OR_ID must be provided.")
@@ -419,7 +422,7 @@ def collection_add_item(ctx, collection_key_or_id, item_key_or_id):
             except Exception as e:
                 results_summary.append({item_key: f"Unexpected error for item '{item_key}': {e}"})
         
-        click.echo(str(results_summary))
+        click.echo(format_data_for_output(results_summary, output)) # Use format_data_for_output
 
     except ResourceNotFoundError: 
         click.echo(f"Collection '{collection_key_or_id}' not found.", err=True)
@@ -433,8 +436,9 @@ def collection_add_item(ctx, collection_key_or_id, item_key_or_id):
 @click.argument('collection_key_or_id', required=True)
 @click.argument('item_key_or_id', nargs=-1, required=True)
 @click.option('--force', is_flag=True, help='Confirm removal without prompting.')
+@common_options
 @click.pass_context
-def collection_remove_item(ctx, collection_key_or_id, item_key_or_id, force):
+def collection_remove_item(ctx, collection_key_or_id, item_key_or_id, force, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Remove item(s) from a collection by modifying the item's 'collections' field."""
     if not item_key_or_id:
         raise click.UsageError("At least one ITEM_KEY_OR_ID must be provided.")
@@ -484,7 +488,7 @@ def collection_remove_item(ctx, collection_key_or_id, item_key_or_id, force):
             except Exception as e:
                 results_summary.append({item_key: f"Unexpected error for item '{item_key}': {e}"})
         
-        click.echo(str(results_summary))
+        click.echo(format_data_for_output(results_summary, output)) # Use format_data_for_output
 
     except ResourceNotFoundError: 
         click.echo(f"Collection '{collection_key_or_id}' not found.", err=True)
@@ -505,7 +509,7 @@ def collection_tags(ctx, collection_key_or_id, limit, start, since, sort, direct
         zot_client.collection(collection_key_or_id) 
         
         results = zot_client.collection_tags(collection_key_or_id, **api_params)
-        click.echo(str(results))
+        click.echo(format_data_for_output(results, output)) # Use format_data_for_output
     except ResourceNotFoundError:
         click.echo(f"Collection '{collection_key_or_id}' not found.", err=True)
     except PyZoteroError as e:

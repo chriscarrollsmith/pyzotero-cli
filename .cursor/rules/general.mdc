@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-`zot-cli` is a Python `click` command-line wrapper for `pyzotero`. As much as possible, we directly pass through inputs, outputs, and exceptions. The goal is simply to expose the `pyzotero` API from the command line so that it can be more effectively used by AI agents with a Bash runner tool.
+`zot-cli` is a Python `click` command-line wrapper for `pyzotero`. As much as possible, we directly pass through inputs, outputs, and exceptions. The goal is simply to expose the `pyzotero` API from the command line so that it can be more effectively used by AI agents with a Bash runner tool. Since the primary users will be AI agents, we generally want to format outputs as valid JSON unless a user specifically requests yaml or tabulated output via an option flag.
 
 ## How `pyzotero` works
 

@@ -12,7 +12,7 @@ def util_group(ctx):
     ctx.ensure_object(dict)
 
 @util_group.command(name='key-info')
-@click.option('--output', type=click.Choice(['json', 'yaml', 'table']), default='table', show_default=True, help='Output format.')
+@click.option('--output', type=click.Choice(['json', 'yaml', 'table']), default='json', show_default=True, help='Output format.')
 @click.pass_context
 def key_info(ctx, output):
     """Display API key permissions."""
@@ -59,7 +59,7 @@ def last_modified_version(ctx):
         handle_zotero_exceptions_and_exit(ctx, e)
 
 @util_group.command(name='item-types')
-@click.option('--output', type=click.Choice(['json', 'yaml', 'list', 'table']), default='list', show_default=True, help='Output format.')
+@click.option('--output', type=click.Choice(['json', 'yaml', 'table']), default='json', show_default=True, help='Output format.')
 @click.pass_context
 def item_types(ctx, output):
     """List all available item types."""
@@ -74,10 +74,7 @@ def item_types(ctx, output):
                             locale=config.get('LOCALE', 'en-US'),
                             local=config.get('LOCAL', False))
         types_data = zot.item_types()
-        if output == 'list':
-            for item_type in types_data:
-                click.echo(f"{cast(dict, item_type).get('itemType')}: {cast(dict, item_type).get('localized')}")
-        elif output == 'table':
+        if output == 'table':
             headers = ["Item Type", "Localized Name"]
             rows = [[cast(dict, it).get('itemType', ''), cast(dict, it).get('localized', '')] for it in types_data]
             click.echo(tabulate(rows, headers=headers, tablefmt="grid"))
@@ -87,7 +84,7 @@ def item_types(ctx, output):
         handle_zotero_exceptions_and_exit(ctx, e)
 
 @util_group.command(name='item-fields')
-@click.option('--output', type=click.Choice(['json', 'yaml', 'list', 'table']), default='list', show_default=True, help='Output format.')
+@click.option('--output', type=click.Choice(['json', 'yaml', 'table']), default='json', show_default=True, help='Output format.')
 @click.pass_context
 def item_fields(ctx, output):
     """List all available item fields."""
@@ -99,10 +96,7 @@ def item_fields(ctx, output):
                             locale=config.get('LOCALE', 'en-US'),
                             local=config.get('LOCAL', False))
         fields_data = zot.item_fields()
-        if output == 'list':
-            for field in fields_data:
-                click.echo(f"{cast(dict, field).get('field')}: {cast(dict, field).get('localized')}")
-        elif output == 'table':
+        if output == 'table':
             headers = ["Field", "Localized Name"]
             rows = [[cast(dict, f).get('field', ''), cast(dict, f).get('localized', '')] for f in fields_data]
             click.echo(tabulate(rows, headers=headers, tablefmt="grid"))
@@ -113,7 +107,7 @@ def item_fields(ctx, output):
 
 @util_group.command(name='item-type-fields')
 @click.argument('item_type')
-@click.option('--output', type=click.Choice(['json', 'yaml', 'list', 'table']), default='list', show_default=True, help='Output format.')
+@click.option('--output', type=click.Choice(['json', 'yaml', 'table']), default='json', show_default=True, help='Output format.')
 @click.pass_context
 def item_type_fields(ctx, item_type, output):
     """List fields for a specific item type."""
@@ -125,10 +119,7 @@ def item_type_fields(ctx, item_type, output):
                             locale=config.get('LOCALE', 'en-US'),
                             local=config.get('LOCAL', False))
         type_fields_data = zot.item_type_fields(itemtype=item_type)
-        if output == 'list':
-            for field in type_fields_data:
-                click.echo(f"{cast(dict, field).get('field')}: {cast(dict, field).get('localized')}")
-        elif output == 'table':
+        if output == 'table':
             headers = ["Field", "Localized Name"]
             rows = [[cast(dict, f).get('field', ''), cast(dict, f).get('localized', '')] for f in type_fields_data]
             click.echo(tabulate(rows, headers=headers, tablefmt="grid"))

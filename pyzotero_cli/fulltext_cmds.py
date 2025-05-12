@@ -73,7 +73,7 @@ def get_fulltext(ctx, item_key, output):
 
 @fulltext_group.command("list-new")
 @click.option('--since', required=True, help='Library version to retrieve new full-text since.')
-@click.option('--output', type=click.Choice(['json', 'yaml', 'table', 'keys']), default='table', show_default=True, help='Output format.')
+@click.option('--output', type=click.Choice(['json', 'yaml', 'table', 'keys']), default='json', show_default=True, help='Output format.')
 @click.pass_context
 def list_new_fulltext(ctx, since, output):
     """List items with new full-text content since a specific library version."""

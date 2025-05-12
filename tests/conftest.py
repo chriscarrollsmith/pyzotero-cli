@@ -3,6 +3,7 @@ import os
 import shutil
 import configparser
 from pyzotero_cli.zot_cli import CONFIG_FILE, CONFIG_DIR
+from click.testing import CliRunner
 
 @pytest.fixture(scope="function")
 def isolated_config():
@@ -85,3 +86,9 @@ def active_profile_with_real_credentials(isolated_config, real_api_credentials):
         config.write(configfile)
         
     return profile_name 
+
+
+# Fixture to provide the Click CliRunner, always used
+@pytest.fixture(scope="session", autouse=True)
+def runner() -> CliRunner:
+    return CliRunner()

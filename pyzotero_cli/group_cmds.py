@@ -11,7 +11,7 @@ def group_list_options(func):
         click.option('--start', type=int, help='Offset for pagination.'),
         click.option('--sort', help="Field to sort groups by (e.g., 'name', 'created', 'numItems')."),
         click.option('--direction', type=click.Choice(['asc', 'desc']), help="Sort direction ('asc' or 'desc')."),
-        click.option('--output', type=click.Choice(['json', 'yaml', 'table', 'keys']), default='table', show_default=True, help='Output format.')
+        click.option('--output', type=click.Choice(['json', 'yaml', 'table', 'keys']), default='json', show_default=True, help='Output format.')
     ]
     for option in reversed(options):
         func = option(func)

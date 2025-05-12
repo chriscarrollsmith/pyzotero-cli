@@ -1,5 +1,5 @@
 import click
-from .utils import common_options
+from .utils import common_options, format_data_for_output
 from pyzotero.zotero_errors import PyZoteroError, HTTPError, ResourceNotFoundError, PreConditionFailedError
 from pyzotero import zotero
 import json
@@ -103,7 +103,7 @@ def item_list(ctx, top, publications, trash, deleted, limit, start, since, sort,
             results = zot_client.deleted(since=since) # 'since' is mandatory and already checked. Other params might not apply.
         else:
             results = zot_client.items(**api_params)
-        click.echo(str(results)) # Basic output for now
+        click.echo(format_data_for_output(results, output))
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
@@ -141,7 +141,7 @@ def item_get(ctx, item_key_or_id, limit, start, since, sort, direction, output, 
             # If get_subset was preferred:
             # results = zot_client.get_subset(list(item_key_or_id), **api_params)
 
-        click.echo(str(results))
+        click.echo(format_data_for_output(results, output))
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
@@ -157,7 +157,7 @@ def item_children(ctx, parent_item_key_or_id, limit, start, since, sort, directi
     api_params = _prepare_pyzotero_params(limit, start, since, sort, direction, query, qmode, filter_tags, filter_item_type)
     try:
         results = zot_client.children(parent_item_key_or_id, **api_params)
-        click.echo(str(results))
+        click.echo(format_data_for_output(results, output))
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
@@ -199,8 +199,8 @@ def item_versions(ctx, since_version, output_format):
     try:
         # Pyzotero has item_versions method
         results = zot_client.item_versions(**params)
-        # Output formatting based on output_format would go here. For now, str().
-        click.echo(str(results))
+        # Output formatting based on output_format
+        click.echo(format_data_for_output(results, output_format))
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
@@ -213,8 +213,10 @@ def item_versions(ctx, since_version, output_format):
 @click.option('--parent-id', 'parent_item_id', help='ID of the parent item for this new item (usually for notes/attachments).') # Renamed
 # --last-modified is not applicable for create_items in Pyzotero, removing it based on typical API behavior
 # @click.option('--last-modified', 'last_modified_version', help='If-Unmodified-Since-Version header value.')
+@common_options # Added common options (includes output)
 @click.pass_context
-def item_create(ctx, from_json_input, template_type, fields, parent_item_id): #, last_modified_version):
+# Added output param from common_options (others like limit, start etc. are unused but harmless here)
+def item_create(ctx, from_json_input, template_type, fields, parent_item_id, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Create new Zotero item(s)."""
     if from_json_input and template_type:
         raise click.UsageError('Cannot use --from-json and --template simultaneously.')
@@ -276,7 +278,8 @@ def item_create(ctx, from_json_input, template_type, fields, parent_item_id): #,
             raise click.UsageError("No item data to create.")
 
         results = zot_client.create_items(item_payloads) # Expects a list of item templates
-        click.echo(str(results))
+        # Use format_data_for_output
+        click.echo(format_data_for_output(results, output))
 
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
@@ -289,8 +292,10 @@ def item_create(ctx, from_json_input, template_type, fields, parent_item_id): #,
 @click.option('--from-json', 'from_json_input', help='Path to a JSON file or a JSON string containing the item data for update.')
 @click.option('--field', 'fields', multiple=True, type=(str, str), help='Set a specific field to update (e.g., --field title "New Title").')
 @click.option('--last-modified', 'last_modified_option', help='If-Unmodified-Since-Version header. Can be a version number or "auto" to use the item\'s current version.')
+@common_options # Added common options (includes output)
 @click.pass_context
-def item_update(ctx, item_key_or_id, from_json_input, fields, last_modified_option):
+# Added output param from common_options (others unused but harmless)
+def item_update(ctx, item_key_or_id, from_json_input, fields, last_modified_option, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Update an existing Zotero item."""
     if from_json_input and fields:
         raise click.UsageError('Cannot use --from-json and --field simultaneously.')
@@ -368,7 +373,9 @@ def item_update(ctx, item_key_or_id, from_json_input, fields, last_modified_opti
 
 
         results = zot_client.update_item(item_to_update)
-        click.echo(str(results))
+        # Use format_data_for_output, structure boolean result
+        output_data = {"status": "success", "item_key": item_key_or_id} if results else {"status": "failed", "item_key": item_key_or_id}
+        click.echo(format_data_for_output(output_data, output))
 
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
@@ -380,8 +387,10 @@ def item_update(ctx, item_key_or_id, from_json_input, fields, last_modified_opti
 @click.argument('item_key_or_id', nargs=-1, required=True)
 @click.option('--last-modified', 'last_modified_option', help='If-Unmodified-Since-Version header. Can be a version number or "auto".')
 @click.option('--force', is_flag=True, help='Confirm deletion without prompting.')
+@common_options # Added common options (includes output)
 @click.pass_context
-def item_delete(ctx, item_key_or_id, last_modified_option, force):
+# Added output param from common_options (others unused but harmless)
+def item_delete(ctx, item_key_or_id, last_modified_option, force, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Delete one or more Zotero items."""
     if not item_key_or_id:
         raise click.UsageError("At least one ITEM_KEY_OR_ID must be provided.")
@@ -441,14 +450,17 @@ def item_delete(ctx, item_key_or_id, last_modified_option, force):
         except Exception as e:
             results_summary.append({key_str_val: f"An unexpected error occurred for item '{key_str_val}': {e}"})
             
-    click.echo(str(results_summary))
+    # Use format_data_for_output
+    click.echo(format_data_for_output(results_summary, output))
 
 
 @item_group.command(name="add-tags")
 @click.argument('item_key_or_id', required=True)
 @click.argument('tag_names', nargs=-1, required=True)
+@common_options # Added common options (includes output)
 @click.pass_context
-def item_add_tags(ctx, item_key_or_id, tag_names):
+# Added output param from common_options (others unused but harmless)
+def item_add_tags(ctx, item_key_or_id, tag_names, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Add one or more tags to a Zotero item."""
     if not tag_names:
         raise click.UsageError("At least one TAG_NAME must be provided.")
@@ -471,9 +483,12 @@ def item_add_tags(ctx, item_key_or_id, tag_names):
         result = zot_client.add_tags(item_data, list(tag_names))
         # add_tags returns True on success.
         if result:
-            click.echo(f"Tags {list(tag_names)} added to item {item_key_or_id}.")
+            # click.echo(f"Tags {list(tag_names)} added to item {item_key_or_id}.")
+             output_data = {"status": "success", "item_key": item_key_or_id, "tags_added": list(tag_names)}
         else:
-            click.echo(f"Failed to add tags to item {item_key_or_id}.")
+            # click.echo(f"Failed to add tags to item {item_key_or_id}.")
+             output_data = {"status": "failed", "item_key": item_key_or_id, "tags": list(tag_names)}
+        click.echo(format_data_for_output(output_data, output)) # Use format_data_for_output
 
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)

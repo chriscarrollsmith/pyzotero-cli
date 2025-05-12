@@ -7,13 +7,31 @@ import os # For ZOTERO_USERNAME if used in assertions
 # Fixtures like active_profile_with_real_credentials and real_api_credentials
 # are automatically available from conftest.py
 
-def test_util_key_info(active_profile_with_real_credentials, real_api_credentials):
+def test_util_key_info(active_profile_with_real_credentials, real_api_credentials, runner: CliRunner):
     """Test the 'zot util key-info' command."""
-    runner = CliRunner()
     profile_name = active_profile_with_real_credentials # Ensures profile is set up
 
-    # Test with default output (table)
-    result_table = runner.invoke(zot, ['util', 'key-info'])
+    # Test with default output (JSON)
+    result_json = runner.invoke(zot, ['util', 'key-info'])
+    print(f"key-info (json) output: {result_json.output}")
+    assert result_json.exit_code == 0
+    try:
+        data = json.loads(result_json.output)
+        assert isinstance(data, dict)
+        assert data['key'] == real_api_credentials['api_key']
+        assert str(data['userID']) == real_api_credentials['library_id']
+        zotero_username = os.environ.get('ZOTERO_USERNAME')
+        if zotero_username:
+            assert data['username'] == zotero_username
+        assert 'access' in data # Check for presence of access permissions
+        # Validate proper JSON serialization with double quotes
+        assert '"key"' in result_json.output
+        assert '"userID"' in result_json.output
+    except json.JSONDecodeError:
+        pytest.fail(f"Output was not valid JSON: {result_json.output}")
+
+    # Test with table output
+    result_table = runner.invoke(zot, ['util', 'key-info', '--output', 'table'])
     print(f"key-info (table) output: {result_table.output}")
     assert result_table.exit_code == 0
     assert "Key" in result_table.output
@@ -24,28 +42,11 @@ def test_util_key_info(active_profile_with_real_credentials, real_api_credential
     # Username might not be in real_api_credentials fixture, 
     # but we can check it's present in output.
     # If ZOTERO_USERNAME is set in env, we could try to match it.
-    zotero_username = os.environ.get('ZOTERO_USERNAME')
     if zotero_username:
         assert zotero_username in result_table.output
 
-    # Test with JSON output
-    result_json = runner.invoke(zot, ['util', 'key-info', '--output', 'json'])
-    print(f"key-info (json) output: {result_json.output}")
-    assert result_json.exit_code == 0
-    try:
-        data = json.loads(result_json.output)
-        assert isinstance(data, dict)
-        assert data['key'] == real_api_credentials['api_key']
-        assert str(data['userID']) == real_api_credentials['library_id']
-        if zotero_username:
-            assert data['username'] == zotero_username
-        assert 'access' in data # Check for presence of access permissions
-    except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result_json.output}")
-
-def test_util_last_modified_version(active_profile_with_real_credentials):
+def test_util_last_modified_version(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util last-modified-version' command."""
-    runner = CliRunner()
     profile_name = active_profile_with_real_credentials # Ensures profile is set up
 
     result = runner.invoke(zot, ['util', 'last-modified-version'])
@@ -57,20 +58,12 @@ def test_util_last_modified_version(active_profile_with_real_credentials):
     # Optionally, convert to int and check if it's positive, though isdigit() is a good start.
     assert int(result.output.strip()) >= 0
 
-def test_util_item_types(active_profile_with_real_credentials):
+def test_util_item_types(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-types' command."""
-    runner = CliRunner()
     profile_name = active_profile_with_real_credentials # Ensures profile is set up
 
-    # Test with default output (list)
-    result_list = runner.invoke(zot, ['util', 'item-types'])
-    print(f"item-types (list) output: {result_list.output}")
-    assert result_list.exit_code == 0
-    assert "book: Book" in result_list.output # Check for a known item type and its localized name
-    assert "journalArticle: Journal Article" in result_list.output
-
-    # Test with JSON output
-    result_json = runner.invoke(zot, ['util', 'item-types', '--output', 'json'])
+    # Test with default output (JSON)
+    result_json = runner.invoke(zot, ['util', 'item-types'])
     print(f"item-types (json) output: {result_json.output}")
     assert result_json.exit_code == 0
     try:
@@ -85,6 +78,9 @@ def test_util_item_types(active_profile_with_real_credentials):
             book_type = next((item for item in data if item.get('itemType') == 'book'), None)
             assert book_type is not None
             assert book_type['localized'] == 'Book'
+        # Validate proper JSON serialization with double quotes
+        assert '"itemType"' in result_json.output
+        assert '"localized"' in result_json.output
     except json.JSONDecodeError:
         pytest.fail(f"Output was not valid JSON: {result_json.output}")
 
@@ -97,20 +93,12 @@ def test_util_item_types(active_profile_with_real_credentials):
     assert "book" in result_table.output        # Check for known item type value
     assert "Journal Article" in result_table.output # Check for known localized name value
 
-def test_util_item_fields(active_profile_with_real_credentials):
+def test_util_item_fields(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-fields' command."""
-    runner = CliRunner()
     profile_name = active_profile_with_real_credentials # Ensures profile is set up
 
-    # Test with default output (list)
-    result_list = runner.invoke(zot, ['util', 'item-fields'])
-    print(f"item-fields (list) output: {result_list.output}")
-    assert result_list.exit_code == 0
-    assert "title: Title" in result_list.output # Check for a known field
-    assert "date: Date" in result_list.output
-
-    # Test with JSON output
-    result_json = runner.invoke(zot, ['util', 'item-fields', '--output', 'json'])
+    # Test with default output (JSON)
+    result_json = runner.invoke(zot, ['util', 'item-fields'])
     print(f"item-fields (json) output: {result_json.output}")
     assert result_json.exit_code == 0
     try:
@@ -123,6 +111,9 @@ def test_util_item_fields(active_profile_with_real_credentials):
             title_field = next((item for item in data if item.get('field') == 'title'), None)
             assert title_field is not None
             assert title_field['localized'] == 'Title'
+        # Validate proper JSON serialization with double quotes
+        assert '"field"' in result_json.output
+        assert '"localized"' in result_json.output
     except json.JSONDecodeError:
         pytest.fail(f"Output was not valid JSON: {result_json.output}")
 
@@ -135,23 +126,13 @@ def test_util_item_fields(active_profile_with_real_credentials):
     assert "title" in result_table.output       # Check for known field value
     assert "Date" in result_table.output        # Check for known localized name value
 
-def test_util_item_type_fields(active_profile_with_real_credentials):
+def test_util_item_type_fields(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-type-fields' command."""
-    runner = CliRunner()
     profile_name = active_profile_with_real_credentials # Ensures profile is set up
     item_type_to_test = "book"
 
-    # Test with default output (list)
-    result_list = runner.invoke(zot, ['util', 'item-type-fields', item_type_to_test])
-    print(f"item-type-fields {item_type_to_test} (list) output: {result_list.output}")
-    assert result_list.exit_code == 0
-    # Fields common to 'book' type
-    assert "title: Title" in result_list.output 
-    assert "publisher: Publisher" in result_list.output
-    assert "date: Date" in result_list.output
-
-    # Test with JSON output
-    result_json = runner.invoke(zot, ['util', 'item-type-fields', item_type_to_test, '--output', 'json'])
+    # Test with default output (JSON)
+    result_json = runner.invoke(zot, ['util', 'item-type-fields', item_type_to_test])
     print(f"item-type-fields {item_type_to_test} (json) output: {result_json.output}")
     assert result_json.exit_code == 0
     try:
@@ -165,6 +146,9 @@ def test_util_item_type_fields(active_profile_with_real_credentials):
             publisher_field = next((item for item in data if item.get('field') == 'publisher'), None)
             assert publisher_field is not None
             assert publisher_field['localized'] == 'Publisher'
+        # Validate proper JSON serialization with double quotes
+        assert '"field"' in result_json.output
+        assert '"localized"' in result_json.output
     except json.JSONDecodeError:
         pytest.fail(f"Output was not valid JSON for {item_type_to_test}: {result_json.output}")
 
@@ -188,9 +172,8 @@ def test_util_item_type_fields(active_profile_with_real_credentials):
     assert "A PyZotero library error occurred" in result_error.output
     assert "Invalid item type 'notAnItemType'" in result_error.output # Specific part of Pyzotero response
 
-def test_util_item_template(active_profile_with_real_credentials):
+def test_util_item_template(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-template' command."""
-    runner = CliRunner()
     profile_name = active_profile_with_real_credentials # Ensures profile is set up
     item_type_to_test = "book"
 

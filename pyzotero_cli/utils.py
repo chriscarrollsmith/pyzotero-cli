@@ -9,7 +9,7 @@ def common_options(func):
         click.option('--since', help='Retrieve objects modified after a library version.'),
         click.option('--sort', help='Field to sort by.'),
         click.option('--direction', type=click.Choice(['asc', 'desc']), help='Sort direction.'),
-        click.option('--output', type=click.Choice(['json', 'yaml', 'table', 'keys', 'bibtex', 'csljson']), default='table', show_default=True, help='Output format.'),
+        click.option('--output', type=click.Choice(['json', 'yaml', 'table', 'keys', 'bibtex', 'csljson']), default='json', show_default=True, help='Output format.'),
         click.option('--query', '-q', help='Quick search query.'),
         click.option('--qmode', type=click.Choice(['titleCreatorYear', 'everything']), help='Quick search mode.'),
         click.option('--filter-tag', 'filter_tags', multiple=True, help='Filter by tag (can be specified multiple times for AND logic).'),
@@ -147,7 +147,7 @@ def format_data_for_output(data, output_format, requested_fields_or_key=None, ta
                     keys_list.append(str(value))
         return "\n".join(keys_list)
     else: # Should not be reached if output_format is validated by click.Choice
-        return str(data)
+        return json_lib.dumps(data)
 
 
 def handle_zotero_exceptions_and_exit(ctx, e):

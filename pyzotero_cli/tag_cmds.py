@@ -28,14 +28,15 @@ def list_tags(ctx, **kwargs):
     tags = zot.tags(**params)
     
     # Output based on format preference
-    if kwargs.get('output') == 'json':
-        click.echo(json.dumps(tags))
-    elif kwargs.get('output') == 'yaml':
+    output_format = kwargs.get('output', 'json')
+    if output_format == 'yaml':
         import yaml
         click.echo(yaml.dump(tags))
-    else:  # Default table output
+    elif output_format == 'table':
         for tag in tags:
             click.echo(tag)
+    else:  # Default is JSON output
+        click.echo(json.dumps(tags))
 
 @tag_group.command(name='list-for-item')
 @common_options
@@ -59,14 +60,15 @@ def list_item_tags(ctx, item_key, **kwargs):
         tags = zot.item_tags(item_key, **params)
         
         # Output based on format preference
-        if kwargs.get('output') == 'json':
-            click.echo(json.dumps(tags))
-        elif kwargs.get('output') == 'yaml':
+        output_format = kwargs.get('output', 'json')
+        if output_format == 'yaml':
             import yaml
             click.echo(yaml.dump(tags))
-        else:  # Default table output
+        elif output_format == 'table':
             for tag in tags:
                 click.echo(tag)
+        else:  # Default is JSON output
+            click.echo(json.dumps(tags))
     except Exception as e:
         click.echo(f"Error retrieving tags for item {item_key}: {str(e)}", err=True)
 

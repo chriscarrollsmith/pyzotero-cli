@@ -52,7 +52,7 @@ def list_searches(ctx, limit, start, since, sort, direction, output, query, qmod
 @click.option('--conditions-json', 'conditions_json_str', required=True,
               help='JSON string or path to a JSON file describing search conditions. '
                    'Format: [{"condition": "title", "operator": "contains", "value": "ecology"}, ...]')
-@click.option('--output', type=click.Choice(['json', 'yaml', 'table', 'keys']), default='table', show_default=True, help='Output format for the created search confirmation.')
+@click.option('--output', type=click.Choice(['json', 'yaml', 'table', 'keys']), default='json', show_default=True, help='Output format for the created search confirmation.')
 @click.pass_context
 def create_search(ctx, name, conditions_json_str, output):
     """Create a new saved search."""
@@ -65,10 +65,11 @@ def create_search(ctx, name, conditions_json_str, output):
                 conditions = json.load(f)
         except FileNotFoundError:
             # If not a file, try to parse as a JSON string
-            conditions = json.loads(conditions_json_str)
-        except json.JSONDecodeError:
-            click.echo(f"Error: --conditions-json input '{conditions_json_str}' is not a valid JSON file path or JSON string.", err=True)
-            ctx.exit(1)
+            try:
+                conditions = json.loads(conditions_json_str)
+            except json.JSONDecodeError:
+                click.echo(f"Error: --conditions-json input '{conditions_json_str}' is not a valid JSON file path or JSON string.", err=True)
+                ctx.exit(1)
 
         if not isinstance(conditions, list) or not all(isinstance(c, dict) for c in conditions):
             click.echo("Error: Conditions JSON must be a list of condition objects.", err=True)
@@ -80,22 +81,30 @@ def create_search(ctx, name, conditions_json_str, output):
                 click.echo(f"Error: Each condition object must contain 'condition', 'operator', and 'value' keys. Problematic condition: {cond}", err=True)
                 ctx.exit(1)
 
-        # Use pyzotero's create_saved_search, which returns True on success or False.
-        success = z.create_saved_search(name=name, conditions=conditions)
+        # Use pyzotero's saved_search, which returns API response data with success/failure info
+        response = z.saved_search(name=name, conditions=conditions)
         
-        if success:
-            # Output a simple success message. The user can list searches to see details.
-            message_data = {"name": name, "status": "created successfully"}
+        # Check if the API call was successful by examining the response
+        if response and 'successful' in response and response['successful']:
+            search_key = response.get('successful', {}).get('0', {}).get('key')
+            # Output a success message based on output format
             if output == 'table':
                 click.echo(f"Saved search '{name}' created successfully.")
-            elif output == 'keys': # Not typical for create, but handle gracefully
-                 click.echo(name) # Or perhaps nothing, as there's no key from create_saved_search
+            elif output == 'keys' and search_key:
+                click.echo(search_key) # Just output the key if keys format is requested
             else:
+                # For JSON/YAML, include more details
+                message_data = {
+                    "name": name,
+                    "key": search_key, 
+                    "status": "created successfully"
+                }
                 click.echo(format_data_for_output(message_data, output))
         else:
-            click.echo(f"Failed to create saved search '{name}'.", err=True)
-            # Pyzotero's create_saved_search doesn't provide detailed error messages on False return,
-            # but an exception would be caught by handle_zotero_exceptions_and_exit.
+            # Handle API failure response
+            error_msg = response.get('failed', {}).get('0', {}).get('message', 'Unknown error')
+            click.echo(f"Failed to create saved search '{name}': {error_msg}", err=True)
+            ctx.exit(1)
 
     except Exception as e:
         handle_zotero_exceptions_and_exit(ctx, e)
@@ -112,27 +121,16 @@ def delete_search(ctx, search_keys, force):
         click.confirm(f"Are you sure you want to delete saved search(es) with key(s): {', '.join(search_keys)}?", abort=True)
     
     try:
-        # Pyzotero's delete_saved_search expects a list of keys.
-        # It returns True if all deletions were successful, False otherwise, or raises an exception.
-        deleted_count = 0
-        failed_keys = []
-
-        # The method is zot.delete_saved_search(key_or_list_of_keys)
-        # If a single key is passed, it works. If a list, it tries to delete all.
-        # It returns True for success, False if any fail.
-        # Let's adapt to iterate and give more specific feedback if possible,
-        # or rely on its batch behavior. The current pyzotero docs say "key or list of keys".
-        # The rule doc says "list of unique saved search keys".
-
-        # If z.delete_saved_search handles a list and returns a boolean for overall success:
-        success = z.delete_saved_search(search_keys)
-        if success:
-             click.echo(f"Successfully deleted saved search(es): {', '.join(search_keys)}.")
+        # Pyzotero's delete_saved_search returns HTTP status code
+        status_code = z.delete_saved_search(search_keys)
+        
+        # Check for successful status code (2xx)
+        if status_code in (200, 204):
+            click.echo(f"Successfully deleted saved search(es): {', '.join(search_keys)}.")
         else:
-            # This doesn't tell us WHICH ones failed if it's a batch operation
-            # returning a single False.
-            click.echo(f"Failed to delete one or more saved searches. Keys provided: {', '.join(search_keys)}", err=True)
-            click.echo("Note: Pyzotero's batch delete might not specify which exact key(s) failed.", err=True)
+            # Non-successful status code
+            click.echo(f"Failed to delete one or more saved searches. Status code: {status_code}. Keys provided: {', '.join(search_keys)}", err=True)
+            ctx.exit(1)
 
     except Exception as e:
         handle_zotero_exceptions_and_exit(ctx, e)
