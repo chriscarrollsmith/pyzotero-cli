@@ -25,7 +25,7 @@ def save_config(config):
     with open(CONFIG_FILE, 'w') as configfile:
         config.write(configfile)
 
-@click.group()
+@click.group(name='zot')
 @click.option('--profile', default=None, help='Use a specific configuration profile.')
 @click.option('--api-key', default=None, help='Override API key.')
 @click.option('--library-id', default=None, help='Override library ID.')
@@ -35,7 +35,7 @@ def save_config(config):
 @click.option('--debug', is_flag=True, help='Debug logging.')
 @click.option('--no-interaction', is_flag=True, help='Disable interactive prompts.')
 @click.pass_context
-def zot(ctx, profile, api_key, library_id, library_type, local, verbose, debug, no_interaction):
+def _zot_main_group_logic(ctx, profile, api_key, library_id, library_type, local, verbose, debug, no_interaction):
     """A CLI for interacting with Zotero libraries via Pyzotero."""
     ctx.ensure_object(dict)
     ctx.obj['PROFILE'] = profile
@@ -121,6 +121,8 @@ def zot(ctx, profile, api_key, library_id, library_type, local, verbose, debug, 
     else:
         ctx.obj['LOCAL'] = profile_local_str.lower() == 'true'
 
+zot = _zot_main_group_logic
+
 from pyzotero_cli.item_cmds import item_group # Import the item command group
 from pyzotero_cli.collection_cmds import collection_group # Import the collection command group
 from pyzotero_cli.tag_cmds import tag_group # Import the tag command group
@@ -138,7 +140,7 @@ zot.add_command(file_group, name='files')
 zot.add_command(search_group, name='search')
 zot.add_command(fulltext_group, name='fulltext')
 zot.add_command(group_group, name='groups')
-zot.add_command(util_group, name='utils')
+zot.add_command(util_group, name='util')
 
 @zot.group()
 def configure():

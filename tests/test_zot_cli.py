@@ -1,46 +1,8 @@
 import pytest
 from click.testing import CliRunner
-from pyzotero_cli.zot_cli import zot, CONFIG_FILE, CONFIG_DIR
-import os
-import shutil
+from pyzotero_cli.zot_cli import zot, CONFIG_FILE
 import configparser
 import json
-
-@pytest.fixture(scope="function")
-def isolated_config():
-    """Ensure each test runs with a fresh config."""
-    # Backup existing config if it exists
-    backup_config_file = None
-    if os.path.exists(CONFIG_FILE):
-        backup_config_file = CONFIG_FILE + ".bak"
-        shutil.copy2(CONFIG_FILE, backup_config_file)
-        os.remove(CONFIG_FILE)
-    
-    # Ensure config dir exists for the test
-    if not os.path.exists(CONFIG_DIR):
-        os.makedirs(CONFIG_DIR)
-
-    yield
-
-    # Clean up: remove the config file created during the test
-    if os.path.exists(CONFIG_FILE):
-        os.remove(CONFIG_FILE)
-    
-    # Restore backup if it existed
-    if backup_config_file and os.path.exists(backup_config_file):
-        shutil.move(backup_config_file, CONFIG_FILE)
-    elif not backup_config_file and not os.path.exists(CONFIG_FILE) and os.path.exists(CONFIG_DIR):
-        # If no backup and no config file, ensure dir is clean if we created it
-        # but only if it's empty
-        if not os.listdir(CONFIG_DIR):
-             shutil.rmtree(CONFIG_DIR, ignore_errors=True)
-        elif CONFIG_DIR == os.path.join(os.path.expanduser("~"), ".config", "zotcli"): # safety check
-            # if the test created the dir, and it's not empty, but it's the specific one we manage
-            # we might leave it. For now, let's try to remove if it's our specific one.
-            # This is a bit tricky, might need adjustment based on test runs.
-            # If a test fails mid-way, this cleanup might not run perfectly.
-            pass
-
 
 def test_zot_help():
     runner = CliRunner()
@@ -225,27 +187,40 @@ def test_configure_current_profile_set_and_get(isolated_config, monkeypatch):
     assert result_get3.exit_code == 0
     assert result_get3.output.strip() == 'prof1'
 
-def test_list_items_real_api(isolated_config, monkeypatch):
+def test_list_items_real_api(isolated_config, real_api_credentials):
     """
-    Tests 'zot items --limit 1' using real API calls.
-    Requires ZOTERO_API_KEY and ZOTERO_LIBRARY_ID environment variables.
+    Tests 'zot items list --limit 1' using real API calls.
+    Relies on Pyzotero picking up credentials from environment variables
+    when no profile is configured and no explicit API key/library ID CLI args are passed.
+    The 'isolated_config' fixture ensures no prior config interferes.
+    The 'real_api_credentials' fixture provides credentials and handles skipping.
     """
     runner = CliRunner()
 
-    api_key = os.environ.get('ZOTERO_API_KEY')
-    library_id = os.environ.get('ZOTERO_LIBRARY_ID')
-
-    if not api_key or not library_id:
-        pytest.skip("ZOTERO_API_KEY and ZOTERO_LIBRARY_ID environment variables are required for this test.")
+    # This test specifically checks the --library-type global option.
+    # We'll use 'user' for this test, assuming ZOTERO_LIBRARY_ID is for a user library
+    # if real_api_credentials['library_type'] is also 'user'.
+    # If ZOTERO_LIBRARY_TYPE is 'group', this still tests the override behavior of --library-type.
+    cli_library_type_to_test = 'user'
 
     args = [
-        '--library-type', 'user',
+        '--library-type', cli_library_type_to_test,
         'items',
         'list',
         '--limit', '1'
     ]
 
-    result = runner.invoke(zot, args, catch_exceptions=False)
+    # Pass environment variables explicitly to runner.invoke to ensure Pyzotero sees them,
+    # especially in CI environments or if the test runner isolates env vars.
+    # isolated_config ensures that zot-cli itself doesn't find a configured profile with credentials.
+    env_vars = {
+        'ZOTERO_API_KEY': real_api_credentials['api_key'],
+        'ZOTERO_LIBRARY_ID': real_api_credentials['library_id'],
+        # Pass ZOTERO_LIBRARY_TYPE as well, as Pyzotero might use it if library_type is not passed to its constructor
+        'ZOTERO_LIBRARY_TYPE': real_api_credentials['library_type'] 
+    }
+
+    result = runner.invoke(zot, args, catch_exceptions=False, env=env_vars)
 
     print(f"Output: {result.output}")
     print(f"Exception: {result.exception}")
@@ -260,11 +235,55 @@ def test_list_items_real_api(isolated_config, monkeypatch):
             assert 'key' in output_data[0]
             assert 'version' in output_data[0]
             assert 'library' in output_data[0]
-            assert output_data[0]['library']['type'] == 'user' 
-            assert str(output_data[0]['library']['id']) == library_id
+            # The type in the Zotero API response should match the --library-type we passed.
+            assert output_data[0]['library']['type'] == cli_library_type_to_test
+            # The library ID in the response should match the one from our environment variables.
+            assert str(output_data[0]['library']['id']) == real_api_credentials['library_id']
     except json.JSONDecodeError:
         pytest.fail(f"Output was not valid JSON: {result.output}")
-    except Exception as e:
-        pytest.fail(f"An unexpected error occurred: {e}\nOutput:\n{result.output}")
+
+def test_list_items_with_active_profile(active_profile_with_real_credentials, real_api_credentials):
+    """
+    Tests 'zot items list --limit 1' using a pre-configured active profile.
+    The 'active_profile_with_real_credentials' fixture sets up this profile.
+    This test ensures commands work correctly when relying on the active profile configuration.
+    """
+    runner = CliRunner()
+    
+    # The active_profile_with_real_credentials fixture has already set up and activated
+    # a profile (e.g., "ci_e2e_profile") with the credentials from real_api_credentials.
+    # So, we don't need to pass --api-key, --library-id, or --library-type here.
+    # The command should use the settings from the active profile.
+    
+    args = [
+        # No global credential/library options needed here
+        'items',
+        'list',
+        '--limit', '1'
+    ]
+
+    # No need to pass env_vars for credentials here, as zot-cli should read from the active profile
+    result = runner.invoke(zot, args, catch_exceptions=False)
+
+    print(f"Profile used (from fixture): {active_profile_with_real_credentials}")
+    print(f"Output: {result.output}")
+    print(f"Exception: {result.exception}")
+    print(f"Exit Code: {result.exit_code}")
+
+    assert result.exit_code == 0
+    try:
+        output_data = json.loads(result.output)
+        assert isinstance(output_data, list)
+        assert len(output_data) <= 1
+        if len(output_data) == 1:
+            item = output_data[0]
+            assert 'key' in item
+            assert 'version' in item
+            assert 'library' in item
+            # The library ID and type in the response should match those in the configured profile
+            assert str(item['library']['id']) == real_api_credentials['library_id']
+            assert item['library']['type'] == real_api_credentials['library_type']
+    except json.JSONDecodeError:
+        pytest.fail(f"Output was not valid JSON: {result.output}")
 
 # More tests will be added here 

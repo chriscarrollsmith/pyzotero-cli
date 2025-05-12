@@ -153,7 +153,7 @@ def item_template(ctx, item_type, link_mode, output): # Added output param for c
                             local=config.get('LOCAL', False))
         params = {}
         if link_mode:
-            params['linkMode'] = link_mode
+            params['linkmode'] = link_mode
         template_data = zot.item_template(item_type, **params)
         # Per spec, only JSON output. format_data_for_output will handle this.
         click.echo(format_data_for_output(template_data, 'json'))
