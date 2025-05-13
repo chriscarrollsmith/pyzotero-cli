@@ -118,12 +118,15 @@ def collection_subcollections(ctx, parent_collection_key_or_id, limit, start, si
 def collection_all(ctx, parent_id, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """List all collections and subcollections, flattened."""
     zot_client = ctx.obj['zotero_client']
-    api_params = _prepare_pyzotero_params(limit, start, since, sort, direction, query, qmode, filter_tags, filter_item_type)
+    # Pyzotero's all_collections() only takes an optional collectionID (parent_id here).
+    # It does not accept other parameters like limit, sort, direction directly.
+    # If filtering/sorting is needed, it would typically be done client-side on the results,
+    # or by setting parameters on the Zotero instance if the specific method respects them (all_collections likely doesn't).
     try:
         if parent_id:
-            results = zot_client.all_collections(parent_id, **api_params)
+            results = zot_client.all_collections(parent_id)
         else:
-            results = zot_client.all_collections(**api_params)
+            results = zot_client.all_collections()
         click.echo(format_data_for_output(results, output)) # Use format_data_for_output
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
@@ -506,18 +509,26 @@ def collection_remove_item(ctx, collection_key_or_id, item_key_or_id, force, lim
 def collection_tags(ctx, collection_key_or_id, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Retrieve tags applied directly to a collection."""
     zot_client = ctx.obj['zotero_client']
-    # These are the parameters for pyzotero's collection_tags method
     api_params = _prepare_pyzotero_params(limit=limit, start=start, since=since, sort=sort, direction=direction, query=query, qmode=qmode, filter_tags=filter_tags, filter_item_type=filter_item_type)
     try:
-        # Check if collection exists (optional, collection_tags might handle it)
-        # zot_client.collection(collection_key_or_id) 
+        # First, verify the collection itself exists to give a precise error message.
+        # The .collection() method will raise ResourceNotFoundError if the collection itself is not found.
+        zot_client.collection(collection_key_or_id)
+
+        # If the collection exists, then attempt to get its tags.
+        # If collection_tags() raises ResourceNotFoundError, it implies the collection exists
+        # but has no tags or the API treats direct tags on collections as a non-existent sub-resource.
+        # In this specific case for this command, an empty list is the desired output.
+        try:
+            results = zot_client.collection_tags(collection_key_or_id, **api_params)
+        except ResourceNotFoundError:
+            results = [] # Collection exists, but no tags found / not applicable
         
-        # Directly call collection_tags from pyzotero
-        results = zot_client.collection_tags(collection_key_or_id, **api_params)
         click.echo(format_data_for_output(results, output))
-    except ResourceNotFoundError:
-        # This might be raised by zot_client.collection() if we were to call it first,
-        # or potentially by collection_tags() itself if the collection doesn't exist.
+
+    except ResourceNotFoundError: 
+        # This outer catch is for when zot_client.collection(collection_key_or_id) fails,
+        # meaning the collection itself was not found.
         click.echo(f"Collection '{collection_key_or_id}' not found.", err=True)
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)

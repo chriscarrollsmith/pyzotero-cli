@@ -70,17 +70,21 @@ def test_collection_group_no_creds(runner, isolated_config):
     with patch.dict(os.environ, {k: '' for k in ['ZOTERO_API_KEY', 'ZOTERO_LIBRARY_ID', 'ZOTERO_LIBRARY_TYPE']}):
         result = runner.invoke(zot, ['collections', 'list'])
         assert result.exit_code != 0
-        assert "API Key is not configured" in result.output or \
-               "Library ID is not configured" in result.output or \
-               "Library Type is not configured" in result.output
+        # The command will first complain about API key, then Lib ID, then Lib Type if the preceding ones were provided.
+        # The zot_cli.py raises these directly.
+        assert "Error: API key is required" in result.output or \
+               "Error: Library ID is required" in result.output or \
+               "Error: Library type ('user' or 'group') is required" in result.output
 
-@patch('pyzotero_cli.collection_cmds.zotero.Zotero') # Keep patch ONLY for testing init error
+@patch('pyzotero_cli.zot_cli.pyzotero_client.Zotero') # Corrected patch target
 def test_collection_group_init_error(mock_zotero_class, runner, active_profile_with_real_credentials):
     """Test handling of PyZoteroError during client initialization."""
     mock_zotero_class.side_effect = PyZoteroError("Initialization failed")
+    # This invocation will cause Zotero client instantiation in zot_cli.py to fail
     result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'list'])
     assert result.exit_code == 1
-    assert "Zotero API Error during client initialization: Initialization failed" in result.output
+    # Expect error message from handle_zotero_exceptions_and_exit via zot_cli.py
+    assert "A PyZotero library error occurred: Initialization failed" in result.output
 
 # Test `collection list`
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
