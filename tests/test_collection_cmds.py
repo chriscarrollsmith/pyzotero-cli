@@ -217,14 +217,12 @@ def test_collection_get_not_found(runner, active_profile_with_real_credentials):
 
     result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'get', non_existent_key])
     print("Get not found output:", result.output)
-    assert result.exit_code == 0 # Command handles error internally
-    # Check for the key components of the PyZotero error message format
-    assert "Zotero API Error:" in result.output
+    # Updated to expect exit code 1 for "not found" error - this is the correct behavior
+    assert result.exit_code == 1
+    # Check for the key components of the error message from PyZotero
+    assert "A PyZotero library error occurred:" in result.output
     assert "Code: 404" in result.output
     assert "Response: Not found" in result.output
-    # assert f"Zotero API Error: Resource not found /users/" in result.output or \
-    #        f"Zotero API Error: Resource not found /groups/" in result.output or \
-    #        f"Zotero API Error: 404 Not Found" in result.output # Add check for generic 404 if specific message varies
 
 # Test `collection subcollections`
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
@@ -657,10 +655,12 @@ def test_collection_delete_real_force(runner, active_profile_with_real_credentia
 
     # Verify deletion (expect not found)
     result_get = runner.invoke(zot, ['--profile', profile_name, 'collections', 'get', collection_key])
-    assert result_get.exit_code == 0 # Command handles error
-    assert "Zotero API Error" in result_get.output and \
-           "404" in result_get.output and \
-           "Collection not found" in result_get.output
+    # Updated to expect exit code 1 for deleted (not found) collection - this is the correct behavior
+    assert result_get.exit_code == 1
+    # Check for key components of the error message
+    assert "A PyZotero library error occurred:" in result_get.output
+    assert "Code: 404" in result_get.output
+    assert "Collection not found" in result_get.output
 
 # REMOVE Prompt tests - rely on --force test above
 # @patch('click.confirm')
@@ -808,7 +808,6 @@ def test_collection_tags_basic(runner, active_profile_with_real_credentials, tem
     # output_tags = {tag_info['tag'] for tag_info in output_data if 'tag' in tag_info}
     # assert all(tag in output_tags for tag in tags_added), f"Expected tags {tags_added}, but got {output_tags}"
 
-# @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_tags_collection_not_found(runner, active_profile_with_real_credentials):
     # mock_zot_instance, mock_factory = create_mock_zotero() - REMOVE MOCK
@@ -820,6 +819,9 @@ def test_collection_tags_collection_not_found(runner, active_profile_with_real_c
 
     result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'tags', non_existent_key])
     print("Collection tags not found output:", result.output)
-    assert result.exit_code == 0 # Error handled internally
-    assert f"Collection '{non_existent_key}' not found." in result.output
-    # mock_zot_instance.collection_tags.assert_not_called() # Should not proceed to call collection_tags - REMOVE MOCK ASSERTION
+    # Updated to expect exit code 1 for non-existent collection - this is the correct behavior
+    assert result.exit_code == 1
+    # Check for appropriate error message
+    assert "A PyZotero library error occurred:" in result.output
+    assert "Code: 404" in result.output
+    assert "Response: Not found" in result.output

@@ -1,34 +1,13 @@
 import click
-from .utils import common_options, format_data_for_output
+from .utils import (
+    common_options, format_data_for_output, prepare_api_params,
+    output_option, pagination_options, sorting_options, filtering_options, versioning_option,
+    deleted_items_options, handle_zotero_exceptions_and_exit
+)
 from pyzotero.zotero_errors import PyZoteroError, HTTPError, ResourceNotFoundError, PreConditionFailedError
 from pyzotero import zotero
 import json
 import os
-
-# Helper function to prepare parameters for Pyzotero API calls
-def _prepare_pyzotero_params(limit=None, start=None, since=None, sort=None, direction=None, query=None, qmode=None, filter_tags=None, filter_item_type=None, **kwargs):
-    params = {}
-    if limit is not None: params['limit'] = limit
-    if start is not None: params['start'] = start
-    if since is not None: params['since'] = since # Used for versioning/syncing
-    if sort is not None: params['sort'] = sort
-    if direction is not None: params['direction'] = direction
-    if query is not None: params['q'] = query
-    if qmode is not None: params['qmode'] = qmode
-    if filter_tags: # filter_tags is a tuple of strings from click
-        # Pyzotero expects a list for multiple tags (results in tag=A&tag=B)
-        # or a comma-separated string for some endpoints (tag=A,B).
-        # For general items() filtering, list is usually preferred for AND.
-        # The spec for common_options suggests "multiple times for AND logic".
-        # Pyzotero's _add_parameters handles list values by repeating the param.
-        params['tag'] = list(filter_tags)
-    if filter_item_type is not None: params['itemType'] = filter_item_type
-    
-    # Clean out None values explicitly, as Pyzotero might treat them as actual params
-    params = {k: v for k, v in params.items() if v is not None}
-    
-    params.update(kwargs)
-    return params
 
 @click.group(name='items')
 @click.pass_context
@@ -73,7 +52,11 @@ def item_group(ctx):
 @click.option('--publications', is_flag=True, help='List publications. Corresponds to Zotero.publications().')
 @click.option('--trash', is_flag=True, help='List items from trash. Corresponds to Zotero.trash().')
 @click.option('--deleted', is_flag=True, help='List deleted items (requires --since). Corresponds to Zotero.deleted().')
-@common_options
+@output_option
+@pagination_options
+@sorting_options(entity_type='item')
+@filtering_options
+@versioning_option
 @click.pass_context
 def item_list(ctx, top, publications, trash, deleted, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """List items in the Zotero library."""
@@ -85,7 +68,33 @@ def item_list(ctx, top, publications, trash, deleted, limit, start, since, sort,
         raise click.UsageError('Only one of --top, --publications, --trash, or --deleted can be specified.')
 
     zot_client = ctx.obj['zotero_client']
-    api_params = _prepare_pyzotero_params(limit, start, since, sort, direction, query, qmode, filter_tags, filter_item_type)
+    
+    # Determine which API method is being used to filter the allowed parameters
+    api_method = 'items'  # Default
+    if top:
+        api_method = 'top'
+    elif publications:
+        api_method = 'publications'
+    elif trash:
+        api_method = 'trash'
+    elif deleted:
+        api_method = 'deleted'
+    
+    # Get allowed parameters for this method
+    allowed_params = ['limit', 'start', 'since', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType']
+    
+    api_params = prepare_api_params(
+        limit=limit, start=start, since=since, sort=sort, direction=direction,
+        query=query, qmode=qmode, filter_tags=filter_tags, filter_item_type=filter_item_type
+    )
+    
+    # Check for unused parameters and warn the user
+    if deleted:
+        unused_params = {k: v for k, v in api_params.items() if k != 'since' and v is not None}
+        if unused_params:
+            click.echo(f"Warning: The following parameters are not applicable to the 'deleted' call and will be ignored: {', '.join(unused_params.keys())}", err=True)
+            # Keep only 'since' parameter for deleted items
+            api_params = {'since': since} if since else {}
 
     try:
         if top:
@@ -105,9 +114,10 @@ def item_list(ctx, top, publications, trash, deleted, limit, start, since, sort,
             results = zot_client.items(**api_params)
         click.echo(format_data_for_output(results, output))
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
         click.echo(f"An unexpected error occurred: {e}", err=True)
+        ctx.exit(1)
 
 @item_group.command(name="get")
 @click.argument('item_key_or_id', nargs=-1, required=True)
@@ -125,7 +135,7 @@ def item_get(ctx, item_key_or_id, limit, start, since, sort, direction, output, 
     # For now, we don't explicitly pass these from common_options unless the spec requires it for 'get'.
     # The spec for `item get` doesn't mention content/style, so we'll just retrieve the items.
     # Output formatting is handled by `output` option, not by Pyzotero params here.
-    api_params = _prepare_pyzotero_params() # Empty, or with specific relevant ones like 'version' if needed.
+    api_params = prepare_api_params() # Empty, or with specific relevant ones like 'version' if needed.
 
     try:
         if len(item_key_or_id) == 1:
@@ -143,9 +153,10 @@ def item_get(ctx, item_key_or_id, limit, start, since, sort, direction, output, 
 
         click.echo(format_data_for_output(results, output))
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
         click.echo(f"An unexpected error occurred: {e}", err=True)
+        ctx.exit(1)
 
 @item_group.command(name="children")
 @click.argument('parent_item_key_or_id', required=True)
@@ -154,14 +165,15 @@ def item_get(ctx, item_key_or_id, limit, start, since, sort, direction, output, 
 def item_children(ctx, parent_item_key_or_id, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
     """Get child items of a specific Zotero item."""
     zot_client = ctx.obj['zotero_client']
-    api_params = _prepare_pyzotero_params(limit, start, since, sort, direction, query, qmode, filter_tags, filter_item_type)
+    api_params = prepare_api_params(limit, start, since, sort, direction, query, qmode, filter_tags, filter_item_type)
     try:
         results = zot_client.children(parent_item_key_or_id, **api_params)
         click.echo(format_data_for_output(results, output))
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
         click.echo(f"An unexpected error occurred: {e}", err=True)
+        ctx.exit(1)
 
 @item_group.command(name="count")
 @click.pass_context
@@ -582,3 +594,22 @@ def item_citation(ctx, style, item_key_or_id):
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
         click.echo(f"An unexpected error occurred: {e}", err=True) 
+
+@item_group.command(name="deleted")
+@deleted_items_options
+@output_option
+@click.pass_context
+def item_deleted(ctx, since, output):
+    """List deleted items. Requires the --since parameter."""
+    zot_client = ctx.obj['zotero_client']
+    
+    try:
+        results = zot_client.deleted(since=since)
+        # Filter to only show deleted items if desired
+        items_deleted = results.get('items', [])
+        click.echo(format_data_for_output(items_deleted, output))
+    except PyZoteroError as e:
+        handle_zotero_exceptions_and_exit(ctx, e)
+    except Exception as e:
+        click.echo(f"An unexpected error occurred: {e}", err=True)
+        ctx.exit(1) 

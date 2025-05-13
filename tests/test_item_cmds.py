@@ -75,19 +75,12 @@ def test_item_get_non_existent_item(runner: CliRunner, active_profile_with_real_
     """Test `zot items get <item_key>` for a non-existent item."""
     non_existent_key = "NONEXIST" # A key that is unlikely to exist
     result = runner.invoke(zot, ['items', 'get', non_existent_key])
-    assert result.exit_code == 0 # The command in item_cmds.py currently exits 0 even on API error, printing error to output
-    # Ideally, this command should exit non-zero on API error or return empty JSON for not found.
-    # For now, we test the current behavior:
-    assert "Zotero API Error" in result.output
-    assert "404" in result.output # spezifische Fehlermeldung für Nichtgefunden
-    assert "Not found" in result.output
-    # Previous attempt to parse JSON, which fails because output is an error string:
-    # try:
-    #     data = json.loads(result.output)
-    #     assert isinstance(data, list), "Output should be a JSON list."
-    #     assert len(data) == 0, "Should return an empty list for a non-existent item key."
-    # except json.JSONDecodeError:
-    #     pytest.fail("Output was not valid JSON for non-existent item get.")
+    # Updated to expect exit code 1 for non-existent item - this is the correct behavior
+    assert result.exit_code == 1
+    # Check for key components of the error message
+    assert "A PyZotero library error occurred:" in result.output
+    assert "Code: 404" in result.output
+    assert "Response: Not found" in result.output
 
 # Test for `zot items create`, `delete`
 def test_item_create_and_delete(runner: CliRunner, active_profile_with_real_credentials, zot_instance):

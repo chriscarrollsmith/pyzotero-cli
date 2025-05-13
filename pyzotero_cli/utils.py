@@ -11,28 +11,211 @@ ZOTERO_SORT_KEYS = [
 ]
 # Removed ZOTERO_GROUP_SORT_KEYS, ZOTERO_TAG_SORT_KEYS, and VALID_SORT_KEYS_MAP
 
-# Common options decorator
-def common_options(func): # Removed entity_type_for_sort
-    options = [
-        click.option('--limit', type=int, help='Number of results to return.'),
-        click.option('--start', type=int, help='Offset for pagination.'),
-        click.option('--since', help='Retrieve objects modified after a library version.'),
-        click.option(
-            '--sort', 
-            type=click.Choice(ZOTERO_SORT_KEYS, case_sensitive=False), 
-            help=f"Field to sort by. Valid Zotero sort keys include: {' | '.join(ZOTERO_SORT_KEYS)}. (Not all keys valid for all commands)."
-        ),
-        click.option('--direction', type=click.Choice(['asc', 'desc'], case_sensitive=False), default='asc', show_default=True, help='Sort direction.'),
-        click.option('--output', type=click.Choice(['json', 'yaml', 'table', 'keys', 'bibtex', 'csljson']), default='json', show_default=True, help='Output format.'),
-        click.option('--query', '-q', help='Quick search query.'),
-        click.option('--qmode', type=click.Choice(['titleCreatorYear', 'everything']), help='Quick search mode.'),
-        click.option('--filter-tag', 'filter_tags', multiple=True, help='Filter by tag (can be specified multiple times for AND logic).'),
-        click.option('--filter-item-type', help='Filter by item type.')
-    ]
+# Define entity-specific sort keys
+COLLECTION_SORT_KEYS = ["dateAdded", "dateModified", "title", "numItems"]
+ITEM_SORT_KEYS = ["dateAdded", "dateModified", "title", "creator", "type", "date", 
+                 "publisher", "publicationTitle", "journalAbbreviation", "language", 
+                 "accessDate", "libraryCatalog", "callNumber", "rights"]
+TAG_SORT_KEYS = ["title", "numItems"]
+GROUP_SORT_KEYS = ["title", "numItems", "created", "lastActivity"]
+
+# Mapping of allowed API parameters for specific PyZotero methods
+ALLOWED_API_PARAMS_MAP = {
+    'collections': ['limit', 'start', 'sort', 'direction', 'since'],
+    'collections_top': ['limit', 'start', 'sort', 'direction', 'since'],
+    'collection': ['since'],
+    'collection_items': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
+    'collection_items_top': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
+    'items': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since', 'itemKey'],
+    'top': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
+    'trash': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
+    'publications': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
+    'deleted': ['since'],
+    'item': ['since', 'content', 'style'],
+    'children': ['limit', 'start', 'sort', 'direction', 'since'],
+}
+
+# Granular decorators for Click commands
+
+def output_option(func):
+    """Decorator to add output format option to a Click command."""
+    return click.option(
+        '--output',
+        type=click.Choice(['json', 'yaml', 'table', 'keys', 'bibtex', 'csljson']),
+        default='json',
+        show_default=True,
+        help='Output format.'
+    )(func)
+
+def pagination_options(func):
+    """Decorator to add pagination options to a Click command."""
+    func = click.option('--limit', type=int, help='Number of results to return.')(func)
+    func = click.option('--start', type=int, help='Offset for pagination.')(func)
+    return func
+
+def sorting_options(entity_type=None):
+    """
+    Decorator factory to add sorting options to a Click command.
     
-    for option in reversed(options):
-        func = option(func)
-    return func 
+    Args:
+        entity_type: Optional entity type to use specific sort keys.
+                    Can be 'collection', 'item', 'tag', or 'group'.
+    
+    Returns:
+        A decorator function that adds sorting options.
+    """
+    def decorator(func):
+        sort_keys = ZOTERO_SORT_KEYS  # Default to all sort keys
+        
+        # Use entity-specific sort keys if provided
+        if entity_type == 'collection':
+            sort_keys = COLLECTION_SORT_KEYS
+        elif entity_type == 'item':
+            sort_keys = ITEM_SORT_KEYS
+        elif entity_type == 'tag':
+            sort_keys = TAG_SORT_KEYS
+        elif entity_type == 'group':
+            sort_keys = GROUP_SORT_KEYS
+        
+        func = click.option(
+            '--sort',
+            type=click.Choice(sort_keys, case_sensitive=False),
+            help=f"Field to sort by. Valid sort keys for this entity: {' | '.join(sort_keys)}."
+        )(func)
+        
+        func = click.option(
+            '--direction',
+            type=click.Choice(['asc', 'desc'], case_sensitive=False),
+            default='asc',
+            show_default=True,
+            help='Sort direction.'
+        )(func)
+        
+        return func
+    return decorator
+
+def filtering_options(func):
+    """Decorator to add filtering options to a Click command."""
+    func = click.option('--query', '-q', help='Quick search query.')(func)
+    func = click.option(
+        '--qmode',
+        type=click.Choice(['titleCreatorYear', 'everything']),
+        help='Quick search mode.'
+    )(func)
+    func = click.option(
+        '--filter-tag',
+        'filter_tags',
+        multiple=True,
+        help='Filter by tag (can be specified multiple times for AND logic).'
+    )(func)
+    func = click.option('--filter-item-type', help='Filter by item type.')(func)
+    return func
+
+def versioning_option(func, required=False):
+    """
+    Decorator to add library version option to a Click command.
+    
+    Args:
+        required: Whether the since option is required.
+    """
+    return click.option(
+        '--since',
+        required=required,
+        help='Retrieve objects modified after a library version.'
+    )(func)
+
+def deleted_items_options(func):
+    """Decorator for options specific to listing deleted items."""
+    return versioning_option(func, required=True)
+
+# Common options decorator as a composition of granular decorators
+def common_options(func):
+    """Legacy decorator that applies all common options."""
+    func = output_option(func)
+    func = pagination_options(func)
+    func = sorting_options()(func)
+    func = filtering_options(func)
+    func = versioning_option(func)
+    return func
+
+def prepare_api_params(limit=None, start=None, since=None, sort=None, direction=None, 
+                       query=None, qmode=None, filter_tags=None, filter_item_type=None, 
+                       api_method=None, **kwargs):
+    """
+    Prepares parameters for Pyzotero API calls.
+    
+    Args:
+        limit: Number of results to return.
+        start: Offset for pagination.
+        since: Retrieve objects modified after a library version.
+        sort: Field to sort by.
+        direction: Sort direction ('asc' or 'desc').
+        query: Quick search query.
+        qmode: Quick search mode ('titleCreatorYear' or 'everything').
+        filter_tags: Filter by tag (multiple tags use AND logic).
+        filter_item_type: Filter by item type.
+        api_method: The Pyzotero API method being called (e.g., 'items', 'collections').
+                   If provided, will check for unused parameters.
+        **kwargs: Additional parameters to pass to the API.
+        
+    Returns:
+        dict: Dictionary of parameters for Pyzotero API calls.
+    """
+    params = {}
+    if limit is not None: params['limit'] = limit
+    if start is not None: params['start'] = start
+    if since is not None: params['since'] = since  # Used for versioning/syncing
+    if sort is not None: params['sort'] = sort
+    if direction is not None: params['direction'] = direction
+    if query is not None: params['q'] = query
+    if qmode is not None: params['qmode'] = qmode
+    if filter_tags:  # filter_tags is a tuple of strings from click
+        # Pyzotero expects a list for multiple tags (results in tag=A&tag=B)
+        # or a comma-separated string for some endpoints (tag=A,B).
+        # For general items() filtering, list is usually preferred for AND.
+        params['tag'] = list(filter_tags)
+    if filter_item_type is not None: params['itemType'] = filter_item_type
+    
+    # Clean out None values explicitly, as Pyzotero might treat them as actual params
+    params = {k: v for k, v in params.items() if v is not None}
+    
+    params.update(kwargs)
+    
+    # Check for unused parameters if api_method is provided
+    if api_method and api_method in ALLOWED_API_PARAMS_MAP:
+        check_unused_params(params, api_method)
+    
+    return params
+
+def check_unused_params(params, api_method, ctx=None):
+    """
+    Check for parameters that are not used by the specific Pyzotero method.
+    Issues a warning if any are found.
+    
+    Args:
+        params: Dictionary of parameters for the API call.
+        api_method: The Pyzotero API method being called (e.g., 'items', 'deleted').
+        ctx: Click context, if available, for exiting on critical errors.
+    
+    Returns:
+        dict: Filtered dictionary containing only the allowed parameters.
+    """
+    if api_method not in ALLOWED_API_PARAMS_MAP:
+        # If we don't know about this method, return all params unfiltered
+        return params
+    
+    allowed_params = ALLOWED_API_PARAMS_MAP[api_method]
+    unused_params = {k: v for k, v in params.items() if k not in allowed_params}
+    
+    if unused_params:
+        warning_msg = f"Warning: The following parameters are not applicable to the '{api_method}' call and will be ignored: {', '.join(unused_params.keys())}"
+        click.echo(warning_msg, err=True)
+        
+        # Return a filtered dictionary with only the allowed parameters
+        return {k: v for k, v in params.items() if k in allowed_params}
+    
+    # If no unused parameters, return the original dict
+    return params
 
 # Import optional libraries for formatting, with fallbacks
 try:
@@ -47,14 +230,41 @@ except ImportError:
 
 from pyzotero import zotero_errors # For specific Zotero exceptions
 
+# Table header presets for common Zotero entities
+TABLE_HEADER_PRESETS = {
+    'collection': [
+        ("Name", 'data.name'),
+        ("Key", 'key'),
+        ("Items", 'meta.numItems')
+    ],
+    'item': [
+        ("Title", 'data.title'),
+        ("Key", 'key'),
+        ("Type", 'data.itemType'),
+        ("Date", 'data.date'),
+        ("Creator", lambda item: item.get('meta', {}).get('creatorSummary', ''))
+    ],
+    'tag': [
+        ("Tag", 'tag'),
+        ("Type", 'type'),
+        ("Count", lambda item: item.get('meta', {}).get('numItems', 0))
+    ],
+    'group': [
+        ("Name", 'data.name'),
+        ("ID", 'id'),
+        ("Type", 'data.type'),
+        ("Owner", 'data.owner'),
+        ("Members", lambda item: len(item.get('data', {}).get('members', [])))
+    ]
+}
 
-def format_data_for_output(data, output_format, requested_fields_or_key=None, table_headers_map=None):
+def format_data_for_output(data, output_format, requested_fields_or_key=None, table_headers_map=None, preset_key=None):
     """
     Formats data for output based on the specified format.
 
     Args:
         data: List of dicts or a single dict (raw from pyzotero or processed).
-        output_format: 'json', 'yaml', 'table', 'keys'.
+        output_format: 'json', 'yaml', 'table', 'keys', 'bibtex', 'csljson'.
         requested_fields_or_key: For 'table' output with pre-processed data, this is a list of
                                  dict keys (display names) to determine column order.
                                  For 'keys' output, this is the string name of the key to extract.
@@ -62,6 +272,8 @@ def format_data_for_output(data, output_format, requested_fields_or_key=None, ta
                            (display_header_name, accessor_lambda_or_dot_path_string).
                            If None, and data is suitable, 'requested_fields_or_key' is used for headers.
                            If data is not a list of dicts, it's tabulated as simple rows.
+        preset_key: String key for predefined table header mappings (e.g., 'collection', 'item').
+                    If provided and matches an entry in TABLE_HEADER_PRESETS, those headers are used.
     """
     if output_format == 'json':
         return json_lib.dumps(data, indent=2, ensure_ascii=False)
@@ -81,6 +293,10 @@ def format_data_for_output(data, output_format, requested_fields_or_key=None, ta
 
         items_for_tabulation = []
         display_headers = []
+
+        # Use preset table headers if specified
+        if preset_key and preset_key in TABLE_HEADER_PRESETS:
+            table_headers_map = TABLE_HEADER_PRESETS[preset_key]
 
         if table_headers_map:
             # Data is raw, needs processing using the table_headers_map
