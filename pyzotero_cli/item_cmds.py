@@ -30,7 +30,7 @@ def _prepare_pyzotero_params(limit=None, start=None, since=None, sort=None, dire
     params.update(kwargs)
     return params
 
-@click.group(name='item')
+@click.group(name='items')
 @click.pass_context
 def item_group(ctx):
     """Manage Zotero items."""
@@ -252,26 +252,51 @@ def item_create(ctx, from_json_input, template_type, fields, parent_item_id, lim
         elif template_type:
             # Create a template
             template = zot_client.item_template(template_type)
-            if not template: # Should not happen if item_type is valid
-                 raise click.ClickException(f"Could not generate template for type: {template_type}")
+            if not isinstance(template, dict): # Check if template is a dictionary
+                 raise click.ClickException(
+                     f"Could not generate a valid item template for type: '{template_type}'. "
+                     f"Pyzotero.item_template() call result: {template}"
+                 )
 
-
-            # Apply fields to the data part of the template
+            # Apply fields to the template itself
             if fields:
                 for key, value in fields:
-                    # This assumes simple key-value pairs for the 'data' dictionary
-                    # More complex paths like 'creators[0].firstName' would need more sophisticated parsing
-                    # For now, assign directly to template['data']
-                    # Example: field title "My Book" -> template['data']['title'] = "My Book"
-                    # If value needs to be int/bool, it must be passed as such, or converted here.
-                    # Click's type=(str,str) means value is always string. Need to handle type conversion.
-                    # For simplicity, let's assume string values are okay for most fields for now.
-                    # Proper type conversion would require schema knowledge.
-                    template['data'][key] = value
-            
-            if parent_item_id: # For notes or attachments linked to a parent item
-                template['data']['parentItem'] = parent_item_id
+                    # Creators need special handling if we want to set them via --field
+                    # For now, this handles top-level simple fields in the template.
+                    # e.g., template['title'] = "My Book"
+                    # Complex paths like 'creators.0.firstName' are not handled by this simple loop.
+                    if key == 'parentItem' and parent_item_id: # Special case for parentItem from option
+                        template[key] = parent_item_id
+                    elif key in template or key in getattr(template, 'data', {}): # Check if key is valid for template
+                        template[key] = value
+                    else:
+                        # Optionally, warn or error if a field is not directly settable this way
+                        # For now, we allow attempting to set any field. Pyzotero validation might catch it.
+                        # Or, more strictly, only allow known template fields.
+                        # For maximum flexibility with --field and to match previous behavior of assuming template['data']
+                        # we could try to set it, but it might be better to be strict.
+                        # Let's stick to setting only existing top-level keys for now for safety, or known ones.
+                        # This was template['data'][key], now it's template[key]
+                        # If a user wants to set a deep field, they should use --from-json.
+                        # A simple default: if key exists in template, set it.
+                        if key in template:
+                             template[key] = value
+                        else:
+                             # If we want to be more permissive (like original template['data'][key] attempt)
+                             # we could do template[key] = value anyway.
+                             # For now, let's be a bit more careful and require the key to exist at top-level.
+                             # This change means template['data'][key] implicitly worked because all fields were under 'data'.
+                             # Now, they are at top-level of template.
+                             # The original code template['data'][key] = value was trying to put all fields under a 'data' sub-dict.
+                             # Pyzotero's create_items expects a list of item dicts, where each dict is the template structure.
+                             # So, template[key] = value is correct for top-level fields of the template.
+                             template[key] = value # Allow setting new keys as well, like original did for 'data'
 
+            # This was an error: template['data']['parentItem'] = parent_item_id
+            # parentItem is a top-level field in the template if it's for a note/attachment.
+            if parent_item_id: # For notes or attachments linked to a parent item
+                template['parentItem'] = parent_item_id
+            
             item_payloads.append(template)
 
         if not item_payloads:

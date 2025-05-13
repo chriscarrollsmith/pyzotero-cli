@@ -27,14 +27,18 @@ The following Pytest fixtures are available in `conftest.py`:
   - **Purpose:** Sets up and activates a profile with real API credentials.  
   - **Use Case:** Tests that rely on a pre-configured active profile.  
 
-- **`temp_tag_in_library` (scope="function")**  
-  - **Purpose:** Creates and cleans up a temporary tag in the Zotero library.  
-  - **Use Case:** Tag-related tests (e.g., listing or deleting tags).  
+- **`runner` (scope="session")**
+  - **Purpose:** Creates the Click `CliRunner` object.
+  - **Use case:** Simulates client for running user CLI commands.
+
+- **`zot_instance` (scope="function")**
+  - **Purpose:** Provides an authenticated Pyzotero instance for direct API checks.
+  - **Use Case:** Tests that need to interact directly with the Zotero API.
 
 - **`temp_item_with_tags` (scope="function")**  
   - **Purpose:** Creates and cleans up a temporary item with tags.  
   - **Use Case:** Tests for item-tag relationships (e.g., listing tags for an item).
 
-- **`runner` (scope="session")**
-  - **Purpose:** Creates the Click `CliRunner` object.
-  - **Use case:** Simulates client for running user CLI commands.
+- **`temp_parent_item` (scope="function")**
+  - **Purpose:** Creates a temporary regular item (journalArticle) for attaching files and cleans it up.
+  - **Use Case:** Tests that require a parent item for attachments or related operations.
