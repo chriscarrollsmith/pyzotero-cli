@@ -1,56 +1,8 @@
 import pytest
 import json
 import time
-from pyzotero import zotero
-from pyzotero.zotero_errors import ResourceNotFoundError # Import specific exception
 
 from pyzotero_cli.zot_cli import zot
-
-# Helper to get Zotero instance from credentials fixture
-@pytest.fixture(scope="function") # Function scope to ensure clean state for API interactions per test
-def zot_instance(real_api_credentials):
-    """Provides an authenticated Pyzotero instance for direct API checks."""
-    try:
-        return zotero.Zotero(
-            library_id=real_api_credentials['library_id'],
-            library_type=real_api_credentials['library_type'],
-            api_key=real_api_credentials['api_key']
-        )
-    except Exception as e:
-        pytest.fail(f"Failed to create Zotero instance for testing: {e}")
-
-@pytest.fixture(scope="function")
-def temp_parent_item(zot_instance):
-    """Creates a temporary regular item (journalArticle) for attaching files and cleans it up."""
-    # Change from 'note' to 'journalArticle' which can have attachments
-    template = zot_instance.item_template('journalArticle')
-    template['title'] = 'Temporary Test Article for Attachments'
-    template['creators'] = [{'creatorType': 'author', 'firstName': 'Test', 'lastName': 'Author'}]
-    
-    resp = zot_instance.create_items([template])
-    if not resp['success'] or '0' not in resp['success']:
-        pytest.fail(f"Failed to create temporary parent item: {resp}")
-    
-    item_key = resp['success']['0']
-    print(f"Created temp parent item: {item_key}") # Debugging
-    yield item_key
-    
-    # Cleanup
-    try:
-        print(f"Attempting to delete temp parent item: {item_key}") # Debugging
-        deleted = zot_instance.delete_item(zot_instance.item(item_key))
-        print(f"Deletion result for {item_key}: {deleted}") # Debugging
-        # Add a small delay sometimes needed for API consistency
-        time.sleep(1) 
-        # Verify deletion (optional but good practice)
-        try:
-            zot_instance.item(item_key)
-            print(f"WARN: Item {item_key} still exists after deletion attempt.") # Debugging
-        except ResourceNotFoundError: # Use imported exception directly
-            print(f"Item {item_key} confirmed deleted.") # Debugging
-            pass # Expected
-    except Exception as e:
-        print(f"Error during cleanup of item {item_key}: {e}") # Debugging output
 
 
 @pytest.fixture(scope="function")

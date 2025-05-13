@@ -1,20 +1,35 @@
 import click
 import json as json_lib
 
+# --- Define a comprehensive list of known Zotero sort keys ---
+# This list is for user guidance; not all keys are valid for all endpoints.
+# The API/pyzotero will handle errors for invalid key/endpoint combinations.
+ZOTERO_SORT_KEYS = [
+    "dateAdded", "dateModified", "title", "creator", "type", "date", "publisher",
+    "publicationTitle", "journalAbbreviation", "language", "accessDate",
+    "libraryCatalog", "callNumber", "rights", "addedBy", "numItems", "tags"
+]
+# Removed ZOTERO_GROUP_SORT_KEYS, ZOTERO_TAG_SORT_KEYS, and VALID_SORT_KEYS_MAP
+
 # Common options decorator
-def common_options(func):
+def common_options(func): # Removed entity_type_for_sort
     options = [
         click.option('--limit', type=int, help='Number of results to return.'),
         click.option('--start', type=int, help='Offset for pagination.'),
         click.option('--since', help='Retrieve objects modified after a library version.'),
-        click.option('--sort', help='Field to sort by.'),
-        click.option('--direction', type=click.Choice(['asc', 'desc']), help='Sort direction.'),
+        click.option(
+            '--sort', 
+            type=click.Choice(ZOTERO_SORT_KEYS, case_sensitive=False), 
+            help=f"Field to sort by. Valid Zotero sort keys include: {' | '.join(ZOTERO_SORT_KEYS)}. (Not all keys valid for all commands)."
+        ),
+        click.option('--direction', type=click.Choice(['asc', 'desc'], case_sensitive=False), default='asc', show_default=True, help='Sort direction.'),
         click.option('--output', type=click.Choice(['json', 'yaml', 'table', 'keys', 'bibtex', 'csljson']), default='json', show_default=True, help='Output format.'),
         click.option('--query', '-q', help='Quick search query.'),
         click.option('--qmode', type=click.Choice(['titleCreatorYear', 'everything']), help='Quick search mode.'),
         click.option('--filter-tag', 'filter_tags', multiple=True, help='Filter by tag (can be specified multiple times for AND logic).'),
         click.option('--filter-item-type', help='Filter by item type.')
     ]
+    
     for option in reversed(options):
         func = option(func)
     return func 
@@ -174,6 +189,19 @@ def handle_zotero_exceptions_and_exit(ctx, e):
         if isinstance(e, exc_type):
             matched_message = f"Error: {base_msg} (Details: {str(e)})"
             break
+    
+    # Add specific handling for HTTPError codes if not caught by the map above
+    if not matched_message and isinstance(e, getattr(zotero_errors, 'HTTPError', type(None))):
+        if hasattr(e, 'status_code'):
+            if e.status_code == 404:
+                # Use the same message as NotFound for consistency
+                base_msg_404 = "The requested resource was not found."
+                matched_message = f"Error: {base_msg_404} (Details: {str(e)})"
+            # Potentially add other specific HTTP status code handlings here
+            # elif e.status_code == 403:
+            #     if not any(isinstance(e, ft) for ft in [getattr(zotero_errors, 'Forbidden', None), getattr(zotero_errors, 'UserNotAuthorisedError', None)] if ft): # Check if already handled by specific types
+            #         base_msg_403 = "Access forbidden. Check API key permissions or resource access rights."
+            #         matched_message = f"Error: {base_msg_403} (Details: {str(e)})"
     
     if not matched_message:
         if isinstance(e, zotero_errors.PyZoteroError): # Broader PyZotero exception

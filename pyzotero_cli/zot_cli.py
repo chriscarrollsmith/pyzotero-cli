@@ -2,6 +2,9 @@ import click
 import os
 import configparser
 from pyzotero_cli.utils import common_options # Import common_options
+from pyzotero import zotero as pyzotero_client # Import the client class
+from pyzotero import zotero_errors # Import exceptions
+from .utils import handle_zotero_exceptions_and_exit # Import error handler
 
 # Define the configuration directory and file path
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".config", "zotcli")
@@ -114,12 +117,61 @@ def _zot_main_group_logic(ctx, profile, api_key, library_id, library_type, local
     profile_local_str = str(ctx.obj['PROFILE_CONFIG'].getboolean('local_zotero', False))
     env_local_str = os.environ.get('ZOTERO_USE_LOCAL')
 
+    # <<< START DEBUG PRINTS >>>
+    if ctx.obj['DEBUG']: # Only print if --debug is passed to the main command
+        click.echo(f"DEBUG: Initial --local flag value: {local}", err=True)
+    # <<< END DEBUG PRINTS >>>
+
     if local: # CLI flag --local takes highest precedence
         ctx.obj['LOCAL'] = True
     elif env_local_str is not None:
         ctx.obj['LOCAL'] = env_local_str.lower() == 'true'
     else:
         ctx.obj['LOCAL'] = profile_local_str.lower() == 'true'
+
+    # --- Check credentials and Instantiate the Zotero client ---
+
+    # <<< START DEBUG PRINTS >>>
+    if ctx.obj['DEBUG']:
+        click.echo(f"DEBUG: Resolved ctx.obj['LOCAL']: {ctx.obj['LOCAL']}", err=True)
+        click.echo(f"DEBUG: final_library_id: {final_library_id}", err=True)
+        click.echo(f"DEBUG: final_library_type: {final_library_type}", err=True)
+        click.echo(f"DEBUG: final_api_key: {final_api_key}", err=True)
+        click.echo(f"DEBUG: API key to be used: {final_api_key if not ctx.obj['LOCAL'] else None}", err=True)
+    # <<< END DEBUG PRINTS >>>
+
+    # Ensure required credentials are present before trying to instantiate
+    if not ctx.obj['LOCAL'] and not final_api_key:
+        click.echo("Error: API key is required when not using --local mode. Set via --api-key, ZOTERO_API_KEY, or profile.", err=True)
+        ctx.exit(1)
+    if not final_library_id:
+        click.echo("Error: Library ID is required. Set via --library-id, ZOTERO_LIBRARY_ID, or profile.", err=True)
+        ctx.exit(1)
+    if not final_library_type:
+        click.echo("Error: Library type ('user' or 'group') is required. Set via --library-type, ZOTERO_LIBRARY_TYPE, or profile.", err=True)
+        ctx.exit(1)
+
+    try:
+        # <<< START DEBUG PRINTS >>>
+        if ctx.obj['DEBUG']:
+            # Log the actual values that will be passed to the constructor
+            click.echo(f"DEBUG: Instantiating Zotero with: library_id='{final_library_id}', library_type='{final_library_type}', api_key='{final_api_key if not ctx.obj['LOCAL'] else None}', local={ctx.obj['LOCAL']}, locale='{ctx.obj['LOCALE']}'", err=True)
+        # <<< END DEBUG PRINTS >>>
+        zot_client = pyzotero_client.Zotero(
+            library_id=final_library_id,  # Pass directly
+            library_type=final_library_type,  # Pass directly
+            api_key=final_api_key if not ctx.obj['LOCAL'] else None,
+            local=ctx.obj['LOCAL'],
+            locale=ctx.obj['LOCALE'],
+            # preserve_json_order could be added as an option/config if needed
+        )
+        ctx.obj['ZOTERO_CLIENT'] = zot_client
+
+    except zotero_errors.PyZoteroError as e:
+        # Use the shared handler for Zotero-specific errors during instantiation
+        handle_zotero_exceptions_and_exit(ctx, e)
+    except Exception as e: # Catch any other unexpected errors during init
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 zot = _zot_main_group_logic
 

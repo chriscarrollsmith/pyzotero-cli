@@ -198,9 +198,9 @@ def test_util_item_template(active_profile_with_real_credentials, runner: CliRun
     assert result_json_explicit.exit_code == 0
     assert result_json_explicit.output == result_json_default.output
 
-    # Test with --link-mode
+    # Test with --linkmode
     linkmode_to_test = "imported_file"
-    result_linkmode = runner.invoke(zot, ['util', 'item-template', item_type_to_test, '--link-mode', linkmode_to_test])
+    result_linkmode = runner.invoke(zot, ['util', 'item-template', item_type_to_test, '--linkmode', linkmode_to_test])
     print(f"item-template {item_type_to_test} with linkmode (json) output: {result_linkmode.output}")
     assert result_linkmode.exit_code == 0
     try:

@@ -130,7 +130,7 @@ def item_type_fields(ctx, item_type, output):
 
 @util_group.command(name='item-template')
 @click.argument('item_type')
-@click.option('--link-mode', type=click.Choice(['imported_file', 'imported_url', 'linked_file', 'linked_url']), help='Link mode for attachments.')
+@click.option('--linkmode', type=click.Choice(['imported_file', 'imported_url', 'linked_file', 'linked_url']), help='Link mode for attachments.')
 @click.option('--output', type=click.Choice(['json']), default='json', show_default=True, help='Output format (only JSON supported).')
 @click.pass_context
 def item_template(ctx, item_type, linkmode, output): # Added output param for consistency, though only json

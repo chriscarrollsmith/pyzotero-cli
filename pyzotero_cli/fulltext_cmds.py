@@ -1,5 +1,5 @@
 import click
-from pyzotero import zotero
+from pyzotero import zotero # Keep for type hinting if necessary, but not for instantiation here
 import json # For parsing JSON input in 'set' command
 from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit
 
@@ -7,41 +7,53 @@ from .utils import common_options, format_data_for_output, handle_zotero_excepti
 @click.pass_context
 def fulltext_group(ctx):
     """Commands for working with full-text content."""
-    try:
-        profile_config = ctx.obj.get('PROFILE_CONFIG', {})
-        api_key_val = ctx.obj.get('API_KEY', profile_config.get('api_key'))
-        library_id_val = ctx.obj.get('LIBRARY_ID', profile_config.get('library_id'))
-        library_type_val = ctx.obj.get('LIBRARY_TYPE', profile_config.get('library_type'))
-        locale_val = ctx.obj.get('LOCALE', profile_config.get('locale', 'en-US'))
-        use_local_server = ctx.obj.get('LOCAL', profile_config.getboolean('local_zotero', False))
+    # Ensure the client from the main group logic is available and use it.
+    # The main zot_cli.py script should have already placed the configured
+    # client into ctx.obj['ZOTERO_CLIENT'].
+    if 'ZOTERO_CLIENT' not in ctx.obj:
+        # This case should ideally not be reached if zot_cli.py is working correctly.
+        click.echo("Error: Zotero client not initialized by the main CLI. This is an unexpected internal error.", err=True)
+        # Attempt to fall back to the old behavior with a warning, or exit.
+        # For now, let's try to be robust and see if old logic can rescue, though it's flawed.
+        # Ideally, we'd ctx.exit(1) here.
+        # Fallback (old logic - to be removed once confirmed unnecessary):
+        click.echo("Warning: Falling back to legacy client instantiation in fulltext_cmds. This may be unstable.", err=True)
+        try:
+            profile_config = ctx.obj.get('PROFILE_CONFIG', {})
+            api_key_val = ctx.obj.get('API_KEY', profile_config.get('api_key'))
+            library_id_val = ctx.obj.get('LIBRARY_ID', profile_config.get('library_id'))
+            library_type_val = ctx.obj.get('LIBRARY_TYPE', profile_config.get('library_type'))
+            locale_val = ctx.obj.get('LOCALE', profile_config.get('locale', 'en-US'))
+            use_local_server = ctx.obj.get('LOCAL', profile_config.getboolean('local_zotero', False))
 
-        if not library_id_val:
-            click.echo("Error: Library ID is required. Configure with 'zot configure setup'.", err=True)
-            ctx.exit(1)
-
-        zot_kwargs = {
-            "library_id": library_id_val,
-            "locale": locale_val
-        }
-
-        if use_local_server:
-            zot_kwargs["local"] = library_id_val # Pass library_id to local if true
-            # api_key and library_type are often not needed or ignored for local connections
-            zot_kwargs["api_key"] = None
-            zot_kwargs["library_type"] = None
-        else:
-            if not library_type_val:
-                click.echo("Error: Library Type is required for remote connections. Configure with 'zot configure setup'.", err=True)
+            if not library_id_val:
+                click.echo("Error (fallback): Library ID is required. Configure with 'zot configure setup'.", err=True)
                 ctx.exit(1)
-            # api_key can be None if user intends read-only public library access, Pyzotero handles this.
-            zot_kwargs["api_key"] = api_key_val
-            zot_kwargs["library_type"] = library_type_val
-            zot_kwargs["local"] = None
 
-        ctx.obj['zot'] = zotero.Zotero(**zot_kwargs)
+            zot_kwargs = {
+                "library_id": library_id_val,
+                "locale": locale_val,
+                "local": use_local_server # Pass boolean directly
+            }
 
-    except Exception as e:
-        handle_zotero_exceptions_and_exit(ctx, e)
+            if use_local_server:
+                zot_kwargs["api_key"] = None 
+                zot_kwargs["library_type"] = None # Pyzotero handles this if local=True
+            else:
+                if not library_type_val:
+                    click.echo("Error (fallback): Library Type is required. Configure with 'zot configure setup'.", err=True)
+                    ctx.exit(1)
+                zot_kwargs["api_key"] = api_key_val
+                zot_kwargs["library_type"] = library_type_val
+            
+            # This was the problematic line, using 'zotero.Zotero' directly.
+            # If ZOTERO_CLIENT is missing, this is a last resort.
+            ctx.obj['zot'] = zotero.Zotero(**zot_kwargs)
+        except Exception as e:
+            handle_zotero_exceptions_and_exit(ctx, e) # Handle errors from fallback
+    else:
+        # Preferred path: Use the client already configured by zot_cli.py
+        ctx.obj['zot'] = ctx.obj['ZOTERO_CLIENT']
 
 
 @fulltext_group.command("get")
@@ -53,9 +65,6 @@ def get_fulltext(ctx, item_key, output):
     zot_instance = ctx.obj['zot']
     try:
         data = zot_instance.fulltext_item(item_key)
-        if not data:
-            click.echo("No full-text content found or item is not an attachment with full-text.", err=True)
-            return
 
         if output == 'raw_content':
             content = data.get('content', '')
