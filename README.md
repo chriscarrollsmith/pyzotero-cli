@@ -38,14 +38,14 @@ This tool is designed for users who prefer a command-line workflow, for scriptin
 `pyzotero-cli` requires Python 3.10 or higher. You can install it using `pip`:
 
 ```bash
-pip install pyzotero-cli # -g for global install
+pip install pyzotero-cli -U # -g for global install
 ```
 
 For global installation, better practice is to [download and install uv](https://docs.astral.sh/uv/getting-started/installation/) and then use `uv tool install` to install into `uv`'s persistent managed tool environment:
 
 ```bash
-# Install pyzotero-cli as a persistent tool
-uv tool install pyzotero-cli
+# Install latest version of pyzotero-cli as a persistent tool
+uv tool install pyzotero-cli -U
 
 # Ensure uv's bin directory is in your PATH (if needed)
 uv tool update-shell
