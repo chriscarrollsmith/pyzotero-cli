@@ -179,6 +179,30 @@ def test_configure_current_profile_set_and_get(isolated_config, monkeypatch, run
     assert result_get3.exit_code == 0
     assert result_get3.output.strip() == 'prof1'
 
+def test_configure_without_credentials(isolated_config, runner: CliRunner):
+    """
+    Test that configure commands work without requiring API key, library ID, or library type.
+    This specifically tests the early return in _zot_main_group_logic for 'configure' subcommands.
+    """
+    # Try to list profiles - this should work even with no credentials
+    result_list = runner.invoke(zot, ['configure', 'list-profiles'])
+    assert result_list.exit_code == 0
+    assert "default" in result_list.output
+    
+    # Try to set up a new profile - should not fail due to credential validation
+    result_setup = runner.invoke(
+        zot, 
+        ['configure', 'setup', '--profile', 'test_creds_exempt'], 
+        input="123\nuser\nabc\nn\nen-US\n"
+    )
+    assert result_setup.exit_code == 0
+    assert "Configuration for profile 'test_creds_exempt' saved" in result_setup.output
+    
+    # Verify that the configure commands still work even with the nested subcommands
+    result_get = runner.invoke(zot, ['configure', 'get', 'library_id', '--profile', 'test_creds_exempt'])
+    assert result_get.exit_code == 0
+    assert result_get.output.strip() == '123'
+
 def test_list_items_real_api(isolated_config, real_api_credentials, runner: CliRunner):
     """
     Tests 'zot items list --limit 1' using real API calls.
