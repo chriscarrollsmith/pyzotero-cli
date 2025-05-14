@@ -3,7 +3,7 @@ name = "pyzotero-cli"
 version = "0.1.0"
 description = "A CLI wrapper for pyzotero"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = [
     "click>=8.2.0",
     "pyyaml>=6.0.2",
@@ -23,3 +23,6 @@ zot = "pyzotero_cli.zot_cli:zot"
 
 [tool.setuptools.packages.find]
 include = ["pyzotero_cli"]
+
+[tool.uv]
+package = true

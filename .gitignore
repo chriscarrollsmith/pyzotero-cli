@@ -16,3 +16,7 @@ __pycache__/
 *.pyzw
 *.egg-info/
 repomix-output.txt
+dist/
+
+# temporarily ignored till mock implementation is done
+.github/workflows/test.yml
