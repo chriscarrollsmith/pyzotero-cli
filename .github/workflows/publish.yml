@@ -22,7 +22,7 @@ jobs:
         run: |
           uv build
           uv venv
-          uv pip install dist/imfp-*.whl
+          uv pip install dist/pyzotero_cli-*.whl
 
       - name: Release to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
