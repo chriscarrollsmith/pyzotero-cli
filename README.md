@@ -43,7 +43,7 @@ pip install pyzotero-cli
 
 ## Configuration
 
-Before you can use `pyzotero-cli` to interact with your Zotero library (unless using the `--local` flag for a local Zotero instance), you need to configure it with your Zotero API key and library details.
+Before you can use `pyzotero-cli` to interact with your Zotero library (unless using the `--local` flag for a local read-only Zotero instance), you need to configure it with your Zotero API key and library details.
 
 The easiest way to get started is with the interactive setup:
 
@@ -55,7 +55,7 @@ This will guide you through setting up a default profile, asking for:
 *   **Zotero Library ID:** Your Zotero User ID (for personal libraries) or Group ID.
 *   **Library Type:** `user` or `group`.
 *   **Zotero API Key:** Generate one from your Zotero account settings ([Feeds/API page](https://www.zotero.org/settings/keys)).
-*   **Use local Zotero instance:** Whether to connect to a running Zotero desktop client locally (read-only).
+*   **Use local Zotero instance:** Whether to connect to a running Zotero desktop client locally (read-only mode, not recommended!).
 *   **Locale:** Defaults to `en-US`.
 
 Configuration is stored in `~/.config/zotcli/config.ini`.
@@ -143,7 +143,7 @@ Many commands support common options:
 *   `--filter-tag <tag>`: Filter by tag (can be used multiple times).
 *   `--filter-item-type <type>`: Filter by item type.
 *   `--since <version>`: Retrieve objects modified after a Zotero library version.
-*   `--local`: Use local Zotero instance (read-only, global option for `zot`).
+*   `--local`: Use local Zotero instance (read-only mode - only GET operations will work, global option for `zot`).
 *   `--profile <name>`: Use a specific configuration profile (global option for `zot`).
 *   `--verbose`/`-v`, `--debug`: Increase verbosity.
 *   `--no-interaction`: Disable interactive prompts (e.g., for confirmations).
