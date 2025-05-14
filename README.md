@@ -186,24 +186,16 @@ Contributions are welcome!
     cd pyzotero-cli
     ```
 
-2.  It's recommended to use a virtual environment. This project uses `uv` for dependency management (see `uv.lock`).
+2.  This project uses `uv` for dependency management (see `uv.lock`).
     ```bash
-    # If you don't have uv, install it: pip install uv
-    uv venv .venv
-    source .venv/bin/activate  # Or .venv\Scripts\activate on Windows
+    # Create a venv and install dependencies
+    uv sync
     ```
 
-3.  Install dependencies, including development dependencies:
-    ```bash
-    uv pip install -e ".[dev]"
-    ```
-    (If not using `uv`, you can use `pip install -e ".[dev]"`)
-
-4.  Run tests:
+3.  Run tests:
     ```bash
     uv run pytest
     ```
-    (Or `pytest` if `uv` is not used for running commands)
 
 ## License
 
