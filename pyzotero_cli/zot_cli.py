@@ -50,6 +50,10 @@ def _zot_main_group_logic(ctx, profile, api_key, library_id, library_type, local
     ctx.obj['DEBUG'] = debug
     ctx.obj['NO_INTERACTION'] = no_interaction
 
+    # Skip credential validation and client instantiation for 'configure' commands
+    if ctx.invoked_subcommand == 'configure':
+        return
+
     config = load_config()
     active_profile_name = profile or config.get('zotcli', 'current_profile', fallback='default')
 
@@ -199,7 +203,7 @@ def configure():
     """Manage zot-cli configuration profiles."""
     pass
 
-@configure.command(name="setup") # Changed from just 'configure' to 'configure setup' to avoid conflict
+@configure.command(name="setup")
 @click.option('--profile', 'profile_name', default='default', help='Name of the profile to configure.')
 @click.pass_context
 def setup_profile(ctx, profile_name):
