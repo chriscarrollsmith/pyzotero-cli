@@ -1,6 +1,3 @@
-Okay, here's a README for your `pyzotero-cli` project.
-
-```markdown
 # pyzotero-cli
 
 [![PyPI version](https://badge.fury.io/py/pyzotero-cli.svg)](https://badge.fury.io/py/pyzotero-cli)
@@ -200,4 +197,3 @@ Contributions are welcome!
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details (assuming one will be added).
-```
