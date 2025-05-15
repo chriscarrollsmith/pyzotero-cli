@@ -141,17 +141,17 @@ def temp_item_with_tags(real_api_credentials):
 
     finally:
         # Teardown
-        if created_item_details: # Use the dict directly, which includes key and version
+        if actual_item_key: # If we have a key, an item was likely created
             try:
-                zot_api_client.delete_item(created_item_details)
+                # Fetch the latest version of the item before attempting to delete
+                item_to_delete = zot_api_client.item(actual_item_key)
+                zot_api_client.delete_item(item_to_delete)
+            except ResourceNotFoundError:
+                # This can happen if the item was already deleted or creation wasn't fully successful
+                print(f"Item {actual_item_key} not found during cleanup. Might have been already deleted or creation failed partially.")
             except Exception as e:
-                print(f"Error during cleanup, deleting item {actual_item_key}: {e}")
-        elif actual_item_key: # Fallback if item creation succeeded but somehow details are missing
-             try:
-                 # Attempt delete with just key and version 0 (might fail if modified)
-                 zot_api_client.delete_item({'key': actual_item_key, 'version': 0}) 
-             except Exception as e:
-                 print(f"Error during fallback cleanup for item {actual_item_key}: {e}")
+                # Catch other potential errors during fetch or delete
+                print(f"Error during cleanup of item {actual_item_key}: {e}")
 
         # Tags on items are removed when item is deleted.
         # Global tags might persist; attempt to clean them if they were unique to this test.
