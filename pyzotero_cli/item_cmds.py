@@ -129,14 +129,15 @@ def item_get(ctx, item_key_or_id, limit, start, since, sort, direction, output, 
         raise click.UsageError("At least one ITEM_KEY_OR_ID must be provided.")
 
     zot_client = ctx.obj['zotero_client']
-    # Common options are less relevant for direct key retrieval, but prepare them for potential use (e.g. 'content')
-    # For item() and get_subset(), most common_options like q, sort, limit, etc. are not applicable.
-    # However, 'content', 'style' etc. can be passed as additional kwargs.
-    # For now, we don't explicitly pass these from common_options unless the spec requires it for 'get'.
-    # The spec for `item get` doesn't mention content/style, so we'll just retrieve the items.
-    # Output formatting is handled by `output` option, not by Pyzotero params here.
-    api_params = prepare_api_params() # Empty, or with specific relevant ones like 'version' if needed.
-
+    # Handle special output formats - we need to pass specific parameters to the API
+    api_params = prepare_api_params() # Start with basic params
+    
+    # Add special parameters based on requested output format
+    if output == 'bibtex':
+        api_params['format'] = 'bibtex'
+    elif output == 'csljson':
+        api_params['content'] = 'csljson'
+    
     try:
         if len(item_key_or_id) == 1:
             results = zot_client.item(item_key_or_id[0], **api_params)
@@ -151,7 +152,28 @@ def item_get(ctx, item_key_or_id, limit, start, since, sort, direction, output, 
             # If get_subset was preferred:
             # results = zot_client.get_subset(list(item_key_or_id), **api_params)
 
-        click.echo(format_data_for_output(results, output))
+        # Handle bibtex format directly since it returns a special object
+        if output == 'bibtex' and hasattr(results, 'entries') and isinstance(results.entries, list):
+            try:
+                # Use bibtexparser to convert BibDatabase to string
+                import bibtexparser
+                from bibtexparser.bwriter import BibTexWriter
+                writer = BibTexWriter()
+                click.echo(bibtexparser.dumps(results, writer))
+            except ImportError:
+                # Fallback if bibtexparser isn't available for conversion
+                entries = []
+                for entry in results.entries:
+                    entry_str = "@" + entry.get('ENTRYTYPE', 'article') + "{" + entry.get('ID', '') + ",\n"
+                    for k, v in entry.items():
+                        if k not in ('ENTRYTYPE', 'ID'):
+                            entry_str += f"  {k} = {{{v}}},\n"
+                    entry_str += "}"
+                    entries.append(entry_str)
+                click.echo("\n\n".join(entries))
+        else:
+            # For other formats, use the standard formatter
+            click.echo(format_data_for_output(results, output))
     except PyZoteroError as e:
         handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:

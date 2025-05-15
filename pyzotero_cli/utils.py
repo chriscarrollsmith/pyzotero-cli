@@ -377,6 +377,13 @@ def format_data_for_output(data, output_format, requested_fields_or_key=None, ta
                 if value is not None:
                     keys_list.append(str(value))
         return "\n".join(keys_list)
+    elif output_format == 'csljson':
+        # Handle csljson which is typically already in the right format but might need to be serialized
+        if isinstance(data, (list, dict)):
+            return json_lib.dumps(data, indent=2, ensure_ascii=False)
+        else:
+            # If it's a string, just return it
+            return data
     else: # Should not be reached if output_format is validated by click.Choice
         return json_lib.dumps(data)
 
