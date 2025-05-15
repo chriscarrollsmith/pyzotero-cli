@@ -529,5 +529,46 @@ def test_item_bib_and_citation(runner: CliRunner, active_profile_with_real_crede
         except Exception as e:
             print(f"Error cleaning up item {item_key} in bib/citation test: {e}")
 
+# Test for `items get` with different output formats
+def test_item_get_with_bibtex_format(runner: CliRunner, active_profile_with_real_credentials, temp_item_with_tags):
+    """Test `zot items get <item_key> --output bibtex` returns BibTeX format."""
+    item_key, _ = temp_item_with_tags
+    result = runner.invoke(zot, ['items', 'get', item_key, '--output', 'bibtex'])
+    assert result.exit_code == 0
+    # BibTeX format should start with @
+    assert result.output.strip().startswith('@'), "BibTeX output should start with @"
+    # Should not be JSON
+    try:
+        json.loads(result.output)
+        pytest.fail("Output should not be valid JSON, but BibTeX format")
+    except json.JSONDecodeError:
+        # Expected - output should not be valid JSON
+        pass
+
+def test_item_get_with_csljson_format(runner: CliRunner, active_profile_with_real_credentials, temp_item_with_tags):
+    """Test `zot items get <item_key> --output csljson` returns CSL-JSON format."""
+    item_key, _ = temp_item_with_tags
+    result = runner.invoke(zot, ['items', 'get', item_key, '--output', 'csljson'])
+    assert result.exit_code == 0
+    # CSL-JSON should be valid JSON
+    try:
+        data = json.loads(result.output)
+        # CSL-JSON usually has these keys at top level or as a list of objects with these keys
+        csl_keys = ['id', 'type', 'title']
+        
+        # Handle both single object and list formats
+        if isinstance(data, list):
+            assert len(data) > 0, "CSL-JSON output should not be empty list"
+            first_item = data[0]
+        else:
+            first_item = data
+            
+        # Check for at least one expected CSL-JSON key
+        assert any(key in first_item for key in csl_keys), f"CSL-JSON should have some of these keys: {csl_keys}"
+    except json.JSONDecodeError:
+        pytest.fail("CSL-JSON output should be valid JSON")
+    except KeyError as e:
+        pytest.fail(f"Error accessing CSL-JSON data: {e}")
+
 
 # More tests will be added here...
