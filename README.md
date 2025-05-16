@@ -7,7 +7,7 @@
 
 `pyzotero-cli` is a powerful command-line interface (CLI) for interacting with your Zotero library. It acts as a wrapper around the excellent [pyzotero](https://github.com/zotero/pyzotero) library, exposing its rich functionality directly to your terminal.
 
-This tool is designed for users who prefer a command-line workflow, for scripting Zotero interactions, or for integration with other tools and AI agents that can leverage shell commands.
+This tool is designed for users who prefer a command-line workflow, for scripting Zotero interactions, or for integration with other tools and AI agents that can leverage shell commands. Example "Rules for AI" to instruct your AI agent (e.g., in Cline or Cursor) how to use this tool are available in the [rules_for_ai](/rules_for_ai) directory.
 
 ## Features
 
@@ -35,15 +35,35 @@ This tool is designed for users who prefer a command-line workflow, for scriptin
 
 ## Installation
 
-`pyzotero-cli` requires Python 3.10 or higher.
+`pyzotero-cli` requires Python 3.10 or higher. You can install it using `pip`:
 
 ```bash
-pip install pyzotero-cli
+pip install pyzotero-cli -U # -g for global install
+```
+
+For global installation, better practice is to [download and install uv](https://docs.astral.sh/uv/getting-started/installation/) and then use `uv tool install` to install into `uv`'s persistent managed tool environment:
+
+```bash
+# Install latest version of pyzotero-cli as a persistent tool
+uv tool install pyzotero-cli -U
+
+# Ensure uv's bin directory is in your PATH (if needed)
+uv tool update-shell
+
+# Now the `zot` command is available directly
+zot --help
+```
+
+You can also use `uvx` to run the CLI tool in a temporary environment without permanently installing it:
+
+```bash
+# Run the zot CLI in a temporary isolated environment
+uvx --from pyzotero-cli zot --help
 ```
 
 ## Configuration
 
-Before you can use `pyzotero-cli` to interact with your Zotero library (unless using the `--local` flag for a local Zotero instance), you need to configure it with your Zotero API key and library details.
+Before you can use `pyzotero-cli` to interact with your Zotero library (unless using the `--local` flag for a local read-only Zotero instance), you need to configure it with your Zotero API key and library details.
 
 The easiest way to get started is with the interactive setup:
 
@@ -55,7 +75,7 @@ This will guide you through setting up a default profile, asking for:
 *   **Zotero Library ID:** Your Zotero User ID (for personal libraries) or Group ID.
 *   **Library Type:** `user` or `group`.
 *   **Zotero API Key:** Generate one from your Zotero account settings ([Feeds/API page](https://www.zotero.org/settings/keys)).
-*   **Use local Zotero instance:** Whether to connect to a running Zotero desktop client locally (read-only).
+*   **Use local Zotero instance:** Whether to connect to a running Zotero desktop client locally (read-only mode, not recommended!).
 *   **Locale:** Defaults to `en-US`.
 
 Configuration is stored in `~/.config/zotcli/config.ini`.
@@ -143,7 +163,7 @@ Many commands support common options:
 *   `--filter-tag <tag>`: Filter by tag (can be used multiple times).
 *   `--filter-item-type <type>`: Filter by item type.
 *   `--since <version>`: Retrieve objects modified after a Zotero library version.
-*   `--local`: Use local Zotero instance (read-only, global option for `zot`).
+*   `--local`: Use local Zotero instance (read-only mode - only GET operations will work, global option for `zot`).
 *   `--profile <name>`: Use a specific configuration profile (global option for `zot`).
 *   `--verbose`/`-v`, `--debug`: Increase verbosity.
 *   `--no-interaction`: Disable interactive prompts (e.g., for confirmations).
