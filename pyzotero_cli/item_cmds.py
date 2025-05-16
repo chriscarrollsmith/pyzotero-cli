@@ -122,8 +122,10 @@ def item_list(ctx, top, publications, trash, deleted, limit, start, since, sort,
 @item_group.command(name="get")
 @click.argument('item_key_or_id', nargs=-1, required=True)
 @common_options # For output formatting mostly, some params might be usable by item()/get_subset() e.g. 'format', 'style', 'content'
+@click.option('--style', 'style_for_bib', help='CSL style to use for --output bib (e.g., "apa").')
+@click.option('--linkwrap', 'linkwrap_for_bib', is_flag=True, help='Wrap URLs in <a> tags for --output bib.')
 @click.pass_context
-def item_get(ctx, item_key_or_id, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type):
+def item_get(ctx, item_key_or_id, limit, start, since, sort, direction, output, query, qmode, filter_tags, filter_item_type, style_for_bib, linkwrap_for_bib):
     """Retrieve one or more specific Zotero items by their key or ID."""
     if not item_key_or_id: # Should be caught by required=True, but good practice
         raise click.UsageError("At least one ITEM_KEY_OR_ID must be provided.")
@@ -133,7 +135,13 @@ def item_get(ctx, item_key_or_id, limit, start, since, sort, direction, output, 
     api_params = prepare_api_params() # Start with basic params
     
     # Add special parameters based on requested output format
-    if output == 'bibtex':
+    if output == 'bib':
+        api_params['content'] = 'bib'
+        if style_for_bib:
+            api_params['style'] = style_for_bib
+        if linkwrap_for_bib:
+            api_params['linkwrap'] = '1' # Pyzotero expects '1' as a string
+    elif output == 'bibtex':
         api_params['format'] = 'bibtex'
     elif output == 'csljson':
         api_params['content'] = 'csljson'
@@ -153,7 +161,13 @@ def item_get(ctx, item_key_or_id, limit, start, since, sort, direction, output, 
             # results = zot_client.get_subset(list(item_key_or_id), **api_params)
 
         # Handle bibtex format directly since it returns a special object
-        if output == 'bibtex' and hasattr(results, 'entries') and isinstance(results.entries, list):
+        if output == 'bib':
+            if isinstance(results, list):
+                for entry in results:
+                    click.echo(entry)
+            else:
+                click.echo(results)
+        elif output == 'bibtex' and hasattr(results, 'entries') and isinstance(results.entries, list):
             try:
                 # Use bibtexparser to convert BibDatabase to string
                 import bibtexparser

@@ -26,12 +26,12 @@ ALLOWED_API_PARAMS_MAP = {
     'collection': ['since'],
     'collection_items': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
     'collection_items_top': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
-    'items': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since', 'itemKey'],
+    'items': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since', 'itemKey', 'content', 'style', 'linkwrap'],
     'top': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
     'trash': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
     'publications': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
     'deleted': ['since'],
-    'item': ['since', 'content', 'style'],
+    'item': ['since', 'content', 'style', 'linkwrap'],
     'children': ['limit', 'start', 'sort', 'direction', 'since'],
 }
 
@@ -41,7 +41,7 @@ def output_option(func):
     """Decorator to add output format option to a Click command."""
     return click.option(
         '--output',
-        type=click.Choice(['json', 'yaml', 'table', 'keys', 'bibtex', 'csljson']),
+        type=click.Choice(['json', 'yaml', 'table', 'keys', 'bibtex', 'csljson', 'bib']),
         default='json',
         show_default=True,
         help='Output format.'
