@@ -5,7 +5,7 @@ from pyzotero_cli.zot_cli import zot # Import the main command group
 import uuid
 
 # Test for `zot items list`
-def test_item_list_default_json_output(runner: CliRunner, active_profile_with_real_credentials):
+def test_item_list_default_json_output(runner: CliRunner):
     """Test `zot items list` returns JSON by default and is not empty."""
     result = runner.invoke(zot, ['items', 'list', '--limit', '1'])
     assert result.exit_code == 0
@@ -19,7 +19,7 @@ def test_item_list_default_json_output(runner: CliRunner, active_profile_with_re
     except json.JSONDecodeError:
         pytest.fail("Output was not valid JSON.")
 
-def test_item_list_top_flag(runner: CliRunner, active_profile_with_real_credentials):
+def test_item_list_top_flag(runner: CliRunner):
     """Test `zot items list --top`."""
     result = runner.invoke(zot, ['items', 'list', '--top', '--limit', '1'])
     assert result.exit_code == 0
@@ -29,13 +29,13 @@ def test_item_list_top_flag(runner: CliRunner, active_profile_with_real_credenti
     except json.JSONDecodeError:
         pytest.fail("Output was not valid JSON for --top flag.")
 
-def test_item_list_output_table(runner: CliRunner, active_profile_with_real_credentials):
+def test_item_list_output_table(runner: CliRunner):
     """Test `zot items list --output table`."""
     result = runner.invoke(zot, ['items', 'list', '--limit', '1', '--output', 'table'])
     assert result.exit_code == 0
     assert "Key" in result.output or "Title" in result.output or "No data to display." in result.output # Check for table headers or empty message
 
-def test_item_list_output_keys(runner: CliRunner, active_profile_with_real_credentials, zot_instance):
+def test_item_list_output_keys(runner: CliRunner, zot_instance):
     """Test `zot items list --output keys`."""
     # Ensure there's at least one item to get a key from
     items = zot_instance.top(limit=1)
@@ -54,7 +54,7 @@ def test_item_list_output_keys(runner: CliRunner, active_profile_with_real_crede
         assert result.output.strip() == "" or len(output_lines[0]) == 8, "Output is empty or a key"
 
 # Test for `zot items get`
-def test_item_get_single_item(runner: CliRunner, active_profile_with_real_credentials, temp_item_with_tags):
+def test_item_get_single_item(runner: CliRunner, temp_item_with_tags):
     """Test `zot items get <item_key>` for an existing item."""
     item_key, _ = temp_item_with_tags # This fixture creates an item
     result = runner.invoke(zot, ['items', 'get', item_key])
@@ -71,7 +71,7 @@ def test_item_get_single_item(runner: CliRunner, active_profile_with_real_creden
     except json.JSONDecodeError:
         pytest.fail("Output was not valid JSON for item get.")
 
-def test_item_get_non_existent_item(runner: CliRunner, active_profile_with_real_credentials):
+def test_item_get_non_existent_item(runner: CliRunner):
     """Test `zot items get <item_key>` for a non-existent item."""
     non_existent_key = "NONEXIST" # A key that is unlikely to exist
     result = runner.invoke(zot, ['items', 'get', non_existent_key])
@@ -83,7 +83,7 @@ def test_item_get_non_existent_item(runner: CliRunner, active_profile_with_real_
     assert "Response: Not found" in result.output
 
 # Test for `zot items create`, `delete`
-def test_item_create_and_delete(runner: CliRunner, active_profile_with_real_credentials, zot_instance):
+def test_item_create_and_delete(runner: CliRunner, zot_instance):
     """Test creating an item and then deleting it."""
     item_title = f"Test Book Created by CLI - {uuid.uuid4()}" # Use uuid for uniqueness
     
@@ -169,7 +169,7 @@ def test_item_create_and_delete(runner: CliRunner, active_profile_with_real_cred
 
 
 # Test for `zot items add-tags`
-def test_item_add_tags(runner: CliRunner, active_profile_with_real_credentials, zot_instance):
+def test_item_add_tags(runner: CliRunner, zot_instance):
     """Test adding tags to an item."""
     # 1. Create a temporary item using zot_instance for simplicity in getting key/version
     template = zot_instance.item_template('journalArticle')
@@ -277,7 +277,7 @@ def test_item_add_tags(runner: CliRunner, active_profile_with_real_credentials, 
 
 
 # Test for `zot items update`
-def test_item_update_field(runner: CliRunner, active_profile_with_real_credentials, zot_instance):
+def test_item_update_field(runner: CliRunner, zot_instance):
     """Test updating an item's field using --field."""
     # 1. Create item using zot_instance
     template = zot_instance.item_template('book')
@@ -349,7 +349,7 @@ def test_item_update_field(runner: CliRunner, active_profile_with_real_credentia
                  except Exception as ex_clean:
                      print(f"Secondary cleanup attempt failed for item {item_key}: {ex_clean}")
 
-def test_item_update_from_json_string(runner: CliRunner, active_profile_with_real_credentials, zot_instance):
+def test_item_update_from_json_string(runner: CliRunner, zot_instance):
     """Test updating an item using --from-json with a JSON string."""
     # 1. Create item
     template = zot_instance.item_template('journalArticle')
@@ -423,7 +423,7 @@ def test_item_update_from_json_string(runner: CliRunner, active_profile_with_rea
                 except Exception: pass
 
 # Test for `items children`
-def test_item_children(runner: CliRunner, active_profile_with_real_credentials, zot_instance):
+def test_item_children(runner: CliRunner, zot_instance):
     """Test `zot items children <parent_key>`."""
     # 1. Create a parent item
     parent_template = zot_instance.item_template('journalArticle')
@@ -478,7 +478,7 @@ def test_item_children(runner: CliRunner, active_profile_with_real_credentials, 
             print(f"Error cleaning up parent item {parent_item_key}: {e_parent}")
 
 # Test for `items count`
-def test_item_count(runner: CliRunner, active_profile_with_real_credentials):
+def test_item_count(runner: CliRunner):
     """Test `zot items count`."""
     result = runner.invoke(zot, ['items', 'count'])
     assert result.exit_code == 0
@@ -491,7 +491,7 @@ def test_item_count(runner: CliRunner, active_profile_with_real_credentials):
         pytest.fail(f"Could not parse item count from output: {result.output}\nError: {e}")
 
 # Tests for `items bib` and `items citation`
-def test_item_bib_and_citation(runner: CliRunner, active_profile_with_real_credentials, zot_instance):
+def test_item_bib_and_citation(runner: CliRunner, zot_instance):
     """Test `zot items bib <key>` and `zot items citation <key>`."""
     # 1. Create a temporary item
     template = zot_instance.item_template('book')
@@ -528,6 +528,111 @@ def test_item_bib_and_citation(runner: CliRunner, active_profile_with_real_crede
             zot_instance.delete_item(item_details)
         except Exception as e:
             print(f"Error cleaning up item {item_key} in bib/citation test: {e}")
+
+# Test for `items get` with different output formats
+def test_item_get_with_bibtex_format(runner: CliRunner, temp_item_with_tags):
+    """Test `zot items get <item_key> --output bibtex` returns BibTeX format."""
+    item_key, _ = temp_item_with_tags
+    result = runner.invoke(zot, ['items', 'get', item_key, '--output', 'bibtex'])
+    assert result.exit_code == 0
+    # BibTeX format should start with @
+    assert result.output.strip().startswith('@'), "BibTeX output should start with @"
+    # Should not be JSON
+    try:
+        json.loads(result.output)
+        pytest.fail("Output should not be valid JSON, but BibTeX format")
+    except json.JSONDecodeError:
+        # Expected - output should not be valid JSON
+        pass
+
+def test_item_get_with_csljson_format(runner: CliRunner, temp_item_with_tags):
+    """Test `zot items get <item_key> --output csljson` returns CSL-JSON format."""
+    item_key, _ = temp_item_with_tags
+    result = runner.invoke(zot, ['items', 'get', item_key, '--output', 'csljson'])
+    assert result.exit_code == 0
+    # CSL-JSON should be valid JSON
+    try:
+        data = json.loads(result.output)
+        # CSL-JSON usually has these keys at top level or as a list of objects with these keys
+        csl_keys = ['id', 'type', 'title']
+        
+        # Handle both single object and list formats
+        if isinstance(data, list):
+            assert len(data) > 0, "CSL-JSON output should not be empty list"
+            first_item = data[0]
+        else:
+            first_item = data
+            
+        # Check for at least one expected CSL-JSON key
+        assert any(key in first_item for key in csl_keys), f"CSL-JSON should have some of these keys: {csl_keys}"
+    except json.JSONDecodeError:
+        pytest.fail("CSL-JSON output should be valid JSON")
+    except KeyError as e:
+        pytest.fail(f"Error accessing CSL-JSON data: {e}")
+
+def test_item_get_with_bib_format_and_style(runner: CliRunner, zot_instance):
+    """Test `zot items get <item_key> --output bib --style <style>`."""
+    # 1. Create a temporary item with identifiable details
+    template = zot_instance.item_template('book')
+    test_title = f"Book for Bib Style Test - {uuid.uuid4()}"
+    template['title'] = test_title
+    template['creators'] = [{'creatorType': 'author', 'firstName': 'Test', 'lastName': 'Styler'}]
+    
+    created_resp = zot_instance.create_items([template])
+    assert created_resp['successful'] and '0' in created_resp['successful']
+    item_key = created_resp['successful']['0']['key']
+    item_details = created_resp['successful']['0'] # For cleanup
+
+    style_to_test = "apa" # A common CSL style
+
+    try:
+        result = runner.invoke(zot, ['items', 'get', item_key, '--output', 'bib', '--style', style_to_test])
+        assert result.exit_code == 0
+        assert result.output.strip() != "", "Bib output with style should not be empty."
+        assert "<div class=\"csl-entry\">" in result.output, "Bib output with style should contain csl-entry div."
+        # Check for elements that might indicate the style was applied (e.g., title, author)
+        # Exact output depends on the style, so this is a basic check.
+        assert test_title.lower() in result.output.lower(), "Bib output with style should contain the item title (case-insensitive)."
+        assert "styler" in result.output.lower(), "Bib output with style should contain author name (case-insensitive)."
+
+    finally:
+        # 2. Cleanup
+        try:
+            zot_instance.delete_item(item_details)
+        except Exception as e:
+            print(f"Error cleaning up item {item_key} in bib style test: {e}")
+
+def test_item_get_with_bib_format_and_linkwrap(runner: CliRunner, zot_instance):
+    """Test `zot items get <item_key> --output bib --linkwrap`."""
+    # 1. Create a temporary item with a URL
+    template = zot_instance.item_template('webpage')
+    test_title = f"Webpage for Linkwrap Test - {uuid.uuid4()}"
+    test_url = f"http://example.com/{uuid.uuid4()}"
+    template['title'] = test_title
+    template['url'] = test_url
+    
+    created_resp = zot_instance.create_items([template])
+    assert created_resp['successful'] and '0' in created_resp['successful']
+    item_key = created_resp['successful']['0']['key']
+    item_details = created_resp['successful']['0'] # For cleanup
+
+    try:
+        result = runner.invoke(zot, ['items', 'get', item_key, '--output', 'bib', '--linkwrap'])
+        print(f"DEBUG linkwrap output: {result.output}")
+        assert result.exit_code == 0
+        assert result.output.strip() != "", "Bib output with linkwrap should not be empty."
+        assert "<div class=\"csl-entry\">" in result.output, "Bib output with linkwrap should contain csl-entry div."
+        # Check for the URL wrapped in an <a> tag
+        # The exact format can vary based on CSL style, but we expect an <a> tag around the URL.
+        assert f'href="{test_url}"' in result.output or f'href=\"{test_url}\"' in result.output
+        assert f">{test_url}</a>" in result.output
+
+    finally:
+        # 2. Cleanup
+        try:
+            zot_instance.delete_item(item_details)
+        except Exception as e:
+            print(f"Error cleaning up item {item_key} in bib linkwrap test: {e}")
 
 
 # More tests will be added here...

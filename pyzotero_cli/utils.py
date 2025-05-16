@@ -26,12 +26,12 @@ ALLOWED_API_PARAMS_MAP = {
     'collection': ['since'],
     'collection_items': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
     'collection_items_top': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
-    'items': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since', 'itemKey'],
+    'items': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since', 'itemKey', 'content', 'style', 'linkwrap'],
     'top': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
     'trash': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
     'publications': ['limit', 'start', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType', 'since'],
     'deleted': ['since'],
-    'item': ['since', 'content', 'style'],
+    'item': ['since', 'content', 'style', 'linkwrap'],
     'children': ['limit', 'start', 'sort', 'direction', 'since'],
 }
 
@@ -41,7 +41,7 @@ def output_option(func):
     """Decorator to add output format option to a Click command."""
     return click.option(
         '--output',
-        type=click.Choice(['json', 'yaml', 'table', 'keys', 'bibtex', 'csljson']),
+        type=click.Choice(['json', 'yaml', 'table', 'keys', 'bibtex', 'csljson', 'bib']),
         default='json',
         show_default=True,
         help='Output format.'
@@ -377,6 +377,13 @@ def format_data_for_output(data, output_format, requested_fields_or_key=None, ta
                 if value is not None:
                     keys_list.append(str(value))
         return "\n".join(keys_list)
+    elif output_format == 'csljson':
+        # Handle csljson which is typically already in the right format but might need to be serialized
+        if isinstance(data, (list, dict)):
+            return json_lib.dumps(data, indent=2, ensure_ascii=False)
+        else:
+            # If it's a string, just return it
+            return data
     else: # Should not be reached if output_format is validated by click.Choice
         return json_lib.dumps(data)
 
