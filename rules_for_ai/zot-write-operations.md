@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-The following commands are available from `zot`. For a given command, use the --help flag to get more detail on usage.
+The following commands are available from the `pyzotero-cli` tool, entrypoint `zot`. For a given command, use the `--help` flag to get more detail on usage.
 
 ```
 Usage: zot [OPTIONS] COMMAND [ARGS]...

@@ -7,7 +7,7 @@
 
 `pyzotero-cli` is a powerful command-line interface (CLI) for interacting with your Zotero library. It acts as a wrapper around the excellent [pyzotero](https://github.com/zotero/pyzotero) library, exposing its rich functionality directly to your terminal.
 
-This tool is designed for users who prefer a command-line workflow, for scripting Zotero interactions, or for integration with other tools and AI agents that can leverage shell commands.
+This tool is designed for users who prefer a command-line workflow, for scripting Zotero interactions, or for integration with other tools and AI agents that can leverage shell commands. Example "Rules for AI" to instruct your AI agent (e.g., in Cline or Cursor) how to use this tool are available in the [rules_for_ai](/rules_for_ai) directory.
 
 ## Features
 
