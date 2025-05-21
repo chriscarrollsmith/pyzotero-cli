@@ -6,24 +6,7 @@ alwaysApply: true
 
 # Using the `pyzotero-cli` (entrypoint `zot`) for write operations
 
-## Available Item Types
 
-The `zot` tool supports a wide range of item types, including but not limited to:
-- `journalArticle`
-- `book`
-- `bookSection`
-- `conferencePaper`
-- `thesis`
-- `webpage`
-- `report`
-- `film`
-- `audioRecording`
-- `videoRecording`
-
-You can list all available item types using:
-```bash
-zot util item-types
-```
 
 ## Adding Items
 
