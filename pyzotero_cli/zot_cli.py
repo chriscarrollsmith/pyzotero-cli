@@ -1,6 +1,7 @@
 import click
 import os
 import configparser
+from importlib.metadata import version
 from pyzotero_cli.utils import common_options # Import common_options
 from pyzotero import zotero as pyzotero_client # Import the client class
 from pyzotero import zotero_errors # Import exceptions
@@ -28,7 +29,15 @@ def save_config(config):
     with open(CONFIG_FILE, 'w') as configfile:
         config.write(configfile)
 
+def print_version(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(version("pyzotero-cli"))
+    ctx.exit()
+
 @click.group(name='zot')
+@click.option('--version', is_flag=True, callback=print_version,
+              expose_value=False, is_eager=True, help="Show the version and exit.")
 @click.option('--profile', default=None, help='Use a specific configuration profile.')
 @click.option('--api-key', default=None, help='Override API key.')
 @click.option('--library-id', default=None, help='Override library ID.')
@@ -38,7 +47,7 @@ def save_config(config):
 @click.option('--debug', is_flag=True, help='Debug logging.')
 @click.option('--no-interaction', is_flag=True, help='Disable interactive prompts.')
 @click.pass_context
-def _zot_main_group_logic(ctx, profile, api_key, library_id, library_type, local, verbose, debug, no_interaction):
+def _zot_main_group_logic(ctx, profile, api_key, library_id, library_type, local, verbose, debug, no_interaction): # version_ parameter is not needed due to expose_value=False
     """A CLI for interacting with Zotero libraries via Pyzotero."""
     ctx.ensure_object(dict)
     ctx.obj['PROFILE'] = profile

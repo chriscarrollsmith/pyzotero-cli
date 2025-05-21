@@ -3,6 +3,7 @@ from pyzotero_cli.zot_cli import zot, CONFIG_FILE
 import configparser
 import json
 from click.testing import CliRunner
+from importlib.metadata import version
 
 
 def test_zot_help(runner: CliRunner):
