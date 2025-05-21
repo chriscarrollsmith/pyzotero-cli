@@ -1,0 +1,54 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Using the `pyzotero-cli` (entrypoint `zot`) for write operations
+
+## Available Item Types
+
+The `zot` tool supports a wide range of item types, including but not limited to:
+- `journalArticle`
+- `book`
+- `bookSection`
+- `conferencePaper`
+- `thesis`
+- `webpage`
+- `report`
+- `film`
+- `audioRecording`
+- `videoRecording`
+
+You can list all available item types using:
+```bash
+zot util item-types
+```
+
+## Adding Items
+
+To add items to your Zotero library, use the `zot items create` command. There are two primary methods:
+
+- **Add from JSON**: Provide JSON with the item details (can be a single object or array of objects):
+  ```bash
+  zot items create --from-json item.json
+
+  zot items create --from-json '{
+    "itemType": "journalArticle",
+    "title": "My Paper",
+    "creators": [{"creatorType": "author", "firstName": "John", "lastName": "Doe"}]
+  }'
+  ```
+- **Add from template**: Use the `--template` and `--field` options for simple fields:
+  ```bash
+  zot items create --template journalArticle --field title "My Article"
+  ```
+Every item requires "itemType", "title", and "creators". Other commonly shared fields include "abstractNote", "publicationTitle", "volume", "issue", "pages", "date", "DOI", "url", and "tags". (Tags must be objects: `{"tag": "value"}`.)
+
+To list all fields for a given item type, use `zot util item-type-fields <item-type>`
+
+## Debugging Tips
+
+- **Use a `temp` directory**: Create a `temp` directory for working files and add it to `.gitignore`. Keep temporary files for debugging.
+- **Capture results**: When uploading records, write the result to a JSON file like `zot items create --from-json <input_file_path> | tee <output_file_path>`. This allows you to perform automated review such as count of created records and review by ID.
+- **Verify created records**: Try to verify the count of created records and/or spot-check by ID. Can records in the input file be counted, e.g. by a substring uniquely associated with all records (`grep "^- " <input_file_path> | wc -l`)? If so, you can compare with the output JSON length: `jq '. | length' <output_file_path>`.
