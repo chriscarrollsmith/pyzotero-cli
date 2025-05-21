@@ -1,0 +1,63 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Using the `pyzotero-cli` (entrypoint `zot`) for read operations
+
+## General tips
+
+*   **Specify output formats**: The `zot` tool can output data in various formats. The `--output <format>` option is crucial for this. Make sure to select a format your text editor supports. Common formats include:
+    *   `json` (default)
+    *   `bibtex`
+    *   `csljson`
+*   **Redirect output to files**: To ensure data integrity and avoid transcription errors, especially when dealing with structured formats like BibTeX or CSL JSON, redirect command output directly to files:
+    *   **Overwrite (or create) a file**: Use the `>` operator. This is useful when generating a bibliography file from scratch.
+        ```bash
+        zot items get <ITEM_KEY> --output bibtex > my_references.bib
+        zot items get <KEY1> <KEY2> --output csljson > my_references.json 
+        ```
+    *   **Append to a BibTeX file**: Use the `>>` operator. This adds new content to the end of an existing file.
+        ```bash
+        zot items get <ANOTHER_ITEM_KEY> --output bibtex >> my_references.bib
+        ```
+    *   **Append to a CSL JSON array**: Directly appending (`>>`) output from multiple `zot items get ... --output csljson` commands will result in an invalid JSON file (multiple JSON arrays concatenated). Instead, you can use `jq` to merge the arrays into a single valid JSON array:
+        ```bash
+        jq -s 'add' references.json <(zot items get ZBZDG3XV --output csljson) > temp.json && mv temp.json references.json
+        ```
+*   **Cite references in your document**: You should review your text editor's documentation for instructions on how to add a bibtex or CSL JSON reference to your document, but typically this involves inserting the CSL JSON id or BibTeX citation key into your document with Pandoc's citation syntax (e.g., `[@20516182/ZBZDG3XV]` for a CSL JSON reference, or `[@smith_2023]` for a BibTeX reference). Or, to add a pre-formatted reference, you can use `zot items get <ITEM_KEY> --output bib --style <ANY_CSL_STYLE_NAME>`, then copy the output into your document.
+
+## Full-text search
+
+The `zot` CLI allows you to perform full-text searches across your Zotero library. This is useful for finding items based on keywords in their titles, abstracts, notes, or even the content of indexed PDF attachments.
+
+*   **Basic full-text search**: Use the `list` subcommand with the `-q` option followed by your search term(s).
+    ```bash
+    zot items list -q "your search query" --limit 10
+    ```
+*   **Scope of search**: The full-text search typically covers:
+    *   Item metadata (titles, author names, abstracts, tags)
+    *   Content of notes attached to items
+    *   Text content of PDF files and other attachments that Zotero has indexed. (Requires Zotero's PDF indexing to be active).
+
+## Example: Generating bibliographies with Quarto
+
+[Quarto](https://quarto.org/) is a powerful tool for academic writing that can render to file formats such as .docx and .pdf, [format citations and bibliographies](https://quarto.org/docs/authoring/citations.html), and reproducibly generate charts and tables directly in the document from R or Python code. Here's how to use the `zot` CLI to add citations in Quarto.
+
+1.  **Export bibliography**: Use `zot items get ... --output bibtex > references.bib` or `zot items get ... --output csljson > references.json` to create your bibliography file.
+2.  **Configure Quarto document**: Point to your bibliography file and citation style in your `.qmd` file's YAML header:
+    ```yaml
+    ---
+    title: "My Document"
+    bibliography: references.bib            # or references.json
+    csl: https://www.zotero.org/styles/mla  # For rendering with CSL, or
+    bibliographystyle: apa                  # For rendering with bibtex
+    format: pdf                             # or html, docx, etc.
+    ---
+    ```
+3.  **Cite in Markdown**: Use Pandoc's citation syntax (e.g., `[@citekey]`, `[@smith_2023]`, `[@20516182/MW88FR9I]`).
+4.  **Render document**:
+    ```bash
+    quarto render my_document.qmd
+    ```

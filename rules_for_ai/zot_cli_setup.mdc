@@ -1,0 +1,31 @@
+---
+description: Setup and configuration of the `pyzotero-cli` tool
+globs: 
+alwaysApply: false
+---
+## Installation
+
+There are three ways to install `pyzotero-cli`
+
+1. Globally in [`uv`](mdc:https:/docs.astral.sh/uv/getting-started/installation)'s managed tool environment: `uv tool install pyzotero-cli -U` (recommended)
+2. In a temporary `uv`-managed execution environment by running commands with `uvx`: `uvx --from pyzotero-cli zot --help`
+3. In your current Python environment with [`pip`](mdc:https:/pip.pypa.io/en/stable/installation): `pip install pyzotero-cli -U` (add `-g` for global install)
+
+## Configuration
+
+Before you can use `pyzotero-cli` to interact with your Zotero library (unless using the `--local` flag for a local read-only Zotero instance), you need to configure it with your Zotero API key and library details. You will need an API key, library ID, and library type:
+
+- To generate an API key, log in to Zotero, navigate to [https://www.zotero.org/settings/keys](mdc:https:/www.zotero.org/settings/keys), and click "Create new private key".
+- Your personal library ID (user ID) is available on the same page, just beneath the "Create new private key" button.
+- For group libraries, the ID can be found by opening the group's page and hovering over the group settings link. The ID is the integer after "/groups/".
+- The library type will be either user or group, depending on whether you're accessing a personal or group library.
+
+The easiest way to get started is with the interactive setup:
+
+```bash
+zot configure setup
+```
+
+This will guide you through setting up a default profile.
+
+Configuration is stored in `~/.config/zotcli/config.ini`.

@@ -1,0 +1,31 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+## Verification
+
+To verify that the `pyzotero-cli` CLI tool (entrypoint `zot`) is installed and at least one user profile configured, use:
+
+```bash
+zot configure list-profiles
+```
+
+If no profiles are configured, review `rules_for_ai/zot-cli-setup.mdc`.
+
+## Usage
+
+The following commands are available from `zot`.
+
+- `collections`: Manage Zotero collections.
+- `configure`: Manage pyzotero-cli configuration profiles.
+- `files`: Commands for managing Zotero file attachments.
+- `fulltext`: Commands for working with full-text content.
+- `groups`: Commands for interacting with Zotero groups.
+- `items`: Manage Zotero items.
+- `search`: Manage Zotero saved searches.
+- `tags`: Commands for working with Zotero tags.
+- `util`: Utility and informational commands.
+
+For a given command, use the `--help` flag to get more detail on usage.

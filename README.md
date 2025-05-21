@@ -35,7 +35,7 @@ This tool is designed for users who prefer a command-line workflow, for scriptin
 
 ## Installation
 
-`pyzotero-cli` requires Python 3.10 or higher. You can install it using `pip`:
+`pyzotero-cli` requires Python 3.10 or higher. You can install it in your current Python environment using `pip`:
 
 ```bash
 pip install pyzotero-cli -U # -g for global install
