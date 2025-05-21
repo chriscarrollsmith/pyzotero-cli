@@ -3,6 +3,7 @@ from pyzotero_cli.zot_cli import zot, CONFIG_FILE
 import configparser
 import json
 from click.testing import CliRunner
+from importlib.metadata import version
 
 
 def test_zot_help(runner: CliRunner):
@@ -297,5 +298,14 @@ def test_list_items_with_active_profile(active_profile_with_real_credentials, re
             assert item['library']['type'] == real_api_credentials['library_type']
     except json.JSONDecodeError:
         pytest.fail(f"Output was not valid JSON: {result.output}")
+
+def test_zot_version(runner: CliRunner):
+    """Test that 'zot --version' prints the version number and exits."""
+    result = runner.invoke(zot, ['--version'])
+    assert result.exit_code == 0
+    # The version should be a valid version string (e.g. "1.2.3")
+    version_str = result.output.strip()
+    assert version_str.count('.') == 2  # Should have two dots for major.minor.patch
+    assert all(part.isdigit() for part in version_str.split('.'))  # Each part should be numeric
 
 # More tests will be added here 
