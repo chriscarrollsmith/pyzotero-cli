@@ -28,22 +28,32 @@ alwaysApply: true
         ```
 *   **Cite references in your document**: You should review your text editor's documentation for instructions on how to add a bibtex or CSL JSON reference to your document, but typically this involves inserting the CSL JSON id or BibTeX citation key into your document with Pandoc's citation syntax (e.g., `[@20516182/ZBZDG3XV]` for a CSL JSON reference, or `[@smith_2023]` for a BibTeX reference). Or, to add a pre-formatted reference, you can use `zot items get <ITEM_KEY> --output bib --style <ANY_CSL_STYLE_NAME>`, then copy the output into your document.
 
-## Full-text search
+## Search
 
-The `zot` CLI allows you to perform full-text searches across your Zotero library. This is useful for finding items based on keywords in their titles, abstracts, notes, or even the content of indexed PDF attachments.
+The `zot` CLI allows you to perform search across your Zotero library. This is useful for finding items based on keywords in the item metadata or even in the full-text content of indexed PDF attachments.
 
-*   **Basic full-text search**: Use the `list` subcommand with the `-q` option followed by your search term(s).
+*   **Basic search**: Use the `list` subcommand with the `-q` option followed by your search term(s).
     ```bash
-    zot items list -q "your search query" --limit 10
+    zot items list -q "your keyword"
     ```
-*   **Scope of search**: The full-text search typically covers:
-    *   Item metadata (titles, author names, abstracts, tags)
-    *   Content of notes attached to items
-    *   Text content of PDF files and other attachments that Zotero has indexed. (Requires Zotero's PDF indexing to be active).
+*   **Scope of search**: The default search mode is `titleCreatorYear`. To search all fields, including full-text content, use `--qmode "everything"`:
+    ```bash
+    zot items list -q "your keyword" --qmode "everything"
+    ```
+*   **Pagination**: Use `--limit` to restrict the size of the search results list, and `--start` (zero-indexed) for pagination:
+    ```bash
+    zot items list -q "your keyword" --limit 10 # First page
+    zot items list -q "your keyword" --limit 10 --start 10 # Second page
+    ```
+*   **Filtering**: Filter by item type with `--filter-item-type` or by tag with `--filter-tag`:
+    ```bash
+    zot items list -q "your keyword" --filter-item-type "book" --filter-tag "your-tag"
+    ```
+    Other filtering strategies are not currently supported.
 
 ## Example: Generating bibliographies with Quarto
 
-[Quarto](https://quarto.org/) is a powerful tool for academic writing that can render to file formats such as .docx and .pdf, [format citations and bibliographies](https://quarto.org/docs/authoring/citations.html), and reproducibly generate charts and tables directly in the document from R or Python code. Here's how to use the `zot` CLI to add citations in Quarto.
+[Quarto](mdc:https:/quarto.org) is a powerful tool for academic writing that can render to file formats such as .docx and .pdf, [format citations and bibliographies](mdc:https:/quarto.org/docs/authoring/citations.html), and reproducibly generate charts and tables directly in the document from R or Python code. Here's how to use the `zot` CLI to add citations in Quarto.
 
 1.  **Export bibliography**: Use `zot items get ... --output bibtex > references.bib` or `zot items get ... --output csljson > references.json` to create your bibliography file.
 2.  **Configure Quarto document**: Point to your bibliography file and citation style in your `.qmd` file's YAML header:
