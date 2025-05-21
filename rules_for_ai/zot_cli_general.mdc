@@ -3,6 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
+Zotero is the leading fully open-source reference management software. `pyzotero-cli` is a Python command-line tool for interacting with the Zotero API.
 
 ## Verification
 
@@ -29,3 +30,24 @@ The following commands are available from `zot`.
 - `util`: Utility and informational commands.
 
 For a given command, use the `--help` flag to get more detail on usage.
+
+## Available Item Types
+
+The `zot` tool supports reading and writing a wide range of standard Zotero item types, including but not limited to:
+
+- `journalArticle`
+- `book`
+- `bookSection`
+- `conferencePaper`
+- `thesis`
+- `webpage`
+- `report`
+- `film`
+- `audioRecording`
+- `videoRecording`
+
+You can list all available item types using:
+
+```bash
+zot util item-types
+```
