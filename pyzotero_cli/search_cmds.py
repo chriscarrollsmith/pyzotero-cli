@@ -1,7 +1,7 @@
 import click
 import json
 from pyzotero import zotero
-from pyzotero_cli.utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit
+from pyzotero_cli.utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception
 
 @click.group('search')
 @click.pass_context
@@ -68,18 +68,25 @@ def create_search(ctx, name, conditions_json_str, output):
             try:
                 conditions = json.loads(conditions_json_str)
             except json.JSONDecodeError:
-                click.echo(f"Error: --conditions-json input '{conditions_json_str}' is not a valid JSON file path or JSON string.", err=True)
-                ctx.exit(1)
+                raise create_click_exception(
+                    description="--conditions-json input is not valid JSON or a findable file",
+                    context=f"Input: '{conditions_json_str}'",
+                    hint="Provide a valid JSON string or path to a JSON file"
+                )
 
         if not isinstance(conditions, list) or not all(isinstance(c, dict) for c in conditions):
-            click.echo("Error: Conditions JSON must be a list of condition objects.", err=True)
-            ctx.exit(1)
+            raise create_click_exception(
+                description="Conditions JSON must be a list of condition objects",
+                hint="Format: [{'condition': 'title', 'operator': 'contains', 'value': 'ecology'}, ...]"
+            )
         
         # Basic validation for condition structure (can be expanded)
         for cond in conditions:
             if not all(key in cond for key in ["condition", "operator", "value"]):
-                click.echo(f"Error: Each condition object must contain 'condition', 'operator', and 'value' keys. Problematic condition: {cond}", err=True)
-                ctx.exit(1)
+                raise create_click_exception(
+                    description="Each condition object must contain 'condition', 'operator', and 'value' keys",
+                    context=f"Problematic condition: {cond}"
+                )
 
         # Use pyzotero's saved_search, which returns API response data with success/failure info
         response = z.saved_search(name=name, conditions=conditions)
@@ -103,8 +110,10 @@ def create_search(ctx, name, conditions_json_str, output):
         else:
             # Handle API failure response
             error_msg = response.get('failed', {}).get('0', {}).get('message', 'Unknown error')
-            click.echo(f"Failed to create saved search '{name}': {error_msg}", err=True)
-            ctx.exit(1)
+            raise create_click_exception(
+                description=f"Failed to create saved search '{name}'",
+                details=error_msg
+            )
 
     except Exception as e:
         handle_zotero_exceptions_and_exit(ctx, e)
@@ -129,8 +138,11 @@ def delete_search(ctx, search_keys, force):
             click.echo(f"Successfully deleted saved search(es): {', '.join(search_keys)}.")
         else:
             # Non-successful status code
-            click.echo(f"Failed to delete one or more saved searches. Status code: {status_code}. Keys provided: {', '.join(search_keys)}", err=True)
-            ctx.exit(1)
+            raise create_click_exception(
+                description="Failed to delete one or more saved searches",
+                context=f"Status code: {status_code}",
+                details=f"Keys provided: {', '.join(search_keys)}"
+            )
 
     except Exception as e:
         handle_zotero_exceptions_and_exit(ctx, e)

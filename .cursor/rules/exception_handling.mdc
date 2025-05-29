@@ -1,9 +1,11 @@
 ---
 description: Importing and handling `pyzotero` exception types
-globs:
+globs: 
 alwaysApply: false
 ---
-Import `pyzotero` exception types from `pyzotero.zotero_errors`. Here are the available types, with their use cases and status codes (where applicable):
+## `pyzotero` exception types
+
+Import `pyzotero` exception types from `pyzotero.zotero_errors` where necessary to catch and handle them. Here are the available types, with their use cases and status codes (where applicable):
 
 *   `PyZoteroError`: Generic parent exception.
 *   `ParamNotPassedError`: Raised if a required parameter isn't passed.

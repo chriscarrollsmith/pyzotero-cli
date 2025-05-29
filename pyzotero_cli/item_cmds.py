@@ -2,7 +2,8 @@ import click
 from .utils import (
     common_options, format_data_for_output, prepare_api_params,
     output_option, pagination_options, sorting_options, filtering_options, versioning_option,
-    deleted_items_options, handle_zotero_exceptions_and_exit
+    deleted_items_options, handle_zotero_exceptions_and_exit, check_unused_params,
+    create_click_exception
 )
 from pyzotero.zotero_errors import PyZoteroError, HTTPError, ResourceNotFoundError, PreConditionFailedError
 from pyzotero import zotero
@@ -382,12 +383,20 @@ def item_update(ctx, item_key_or_id, from_json_input, fields, last_modified_opti
         # and to have the full item structure if updating fields.
         original_item = zot_client.item(item_key_or_id)
         if not original_item: # Or if item() returns list and it's empty
-            raise click.ClickException(f"Item with key '{item_key_or_id}' not found.")
+            raise create_click_exception(
+                description="Item not found",
+                context=f"Item key: '{item_key_or_id}'",
+                hint="Verify the item key exists in your library"
+            )
         
         # If item() returns a list (even with one item), take the first.
         if isinstance(original_item, list):
             if not original_item:
-                 raise click.ClickException(f"Item with key '{item_key_or_id}' not found.")
+                raise create_click_exception(
+                    description="Item not found",
+                    context=f"Item key: '{item_key_or_id}'",
+                    hint="Verify the item key exists in your library"
+                )
             original_item = original_item[0]
 
 
@@ -546,7 +555,11 @@ def item_add_tags(ctx, item_key_or_id, tag_names, limit, start, since, sort, dir
         if isinstance(item_data, list) and item_data:
             item_data = item_data[0]
         elif not item_data:
-            raise click.ClickException(f"Item with key '{item_key_or_id}' not found.")
+            raise create_click_exception(
+                description="Item not found",
+                context=f"Item key: '{item_key_or_id}'",
+                hint="Verify the item key exists in your library"
+            )
 
         # Pyzotero's add_tags might also just take the item key.
         # Docs: zot.add_tags(item, 'tag1, tag2') OR zot.add_tags(item, ['tag1', 'tag2'])

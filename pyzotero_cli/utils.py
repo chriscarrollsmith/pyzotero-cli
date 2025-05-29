@@ -387,52 +387,142 @@ def format_data_for_output(data, output_format, requested_fields_or_key=None, ta
     else: # Should not be reached if output_format is validated by click.Choice
         return json_lib.dumps(data)
 
+# Helper function for formatting error messages according to stderr_formatting standard
+def format_error_message(description, context=None, details=None, hint=None):
+    """
+    Formats error messages according to the stderr_formatting standard.
+    
+    Args:
+        description: Brief, user-friendly problem description
+        context: Optional relevant key/value information
+        details: Optional snippet from underlying error if concise and useful
+        hint: Optional user action suggestion
+        
+    Returns:
+        str: Formatted error message
+    """
+    parts = [f"Error: {description}"]
+    
+    if context:
+        parts.append(f"Context: {context}")
+    
+    if details:
+        parts.append(f"Details: {details}")
+        
+    if hint:
+        parts.append(f"Hint: {hint}")
+    
+    return ". ".join(parts) + "."
+
+def create_click_exception(description, context=None, details=None, hint=None):
+    """
+    Creates a ClickException with properly formatted error message.
+    
+    Args:
+        description: Brief, user-friendly problem description
+        context: Optional relevant key/value information
+        details: Optional snippet from underlying error if concise and useful
+        hint: Optional user action suggestion
+        
+    Returns:
+        click.ClickException: Exception with formatted message
+    """
+    message = format_error_message(description, context, details, hint)
+    return click.ClickException(message)
 
 def handle_zotero_exceptions_and_exit(ctx, e):
     """Handles PyZotero exceptions and prints user-friendly messages before exiting."""
+    
+    # Let ClickException bubble up to Click's built-in handler
+    if isinstance(e, click.ClickException):
+        raise e
+    
     # Ensure all referenced zotero_errors attributes exist or use getattr
-    error_messages = {
-        getattr(zotero_errors, 'RateLimitExceeded', None): "Zotero API rate limit exceeded. Please try again later.",
-        getattr(zotero_errors, 'InvalidAPIKey', None): "Invalid or missing Zotero API key.",
-        getattr(zotero_errors, 'Forbidden', None): "Access forbidden. Check API key permissions or resource access rights.",
-        getattr(zotero_errors, 'NotFound', None): "The requested resource was not found.",
-        getattr(zotero_errors, 'ZoteroServerError', None): "A Zotero server error occurred. Please try again later.",
-        getattr(zotero_errors, 'PreconditionFailed', None): "Precondition failed. This can occur if a library version ('since') is too old, or due to a data conflict (e.g., trying to update a deleted item).",
-        getattr(zotero_errors, 'MissingCredentials', None): "Missing credentials for Zotero client (e.g. API key for non-local, or library ID/type).",
-        getattr(zotero_errors, 'BadRequest', None): "Bad request. Check parameters and data format.",
-        getattr(zotero_errors, 'MethodNotSupported', None): "The HTTP method is not supported for this resource.",
-        getattr(zotero_errors, 'UnsupportedParams', None): "One or more parameters are not supported by this Zotero API endpoint.",
-        getattr(zotero_errors, 'ResourceGone', None): "The resource is gone and no longer available.",
+    error_mappings = {
+        getattr(zotero_errors, 'RateLimitExceeded', None): {
+            "description": "Zotero API rate limit exceeded",
+            "hint": "Please try again later"
+        },
+        getattr(zotero_errors, 'InvalidAPIKey', None): {
+            "description": "Invalid or missing Zotero API key",
+            "hint": "Check your API key configuration"
+        },
+        getattr(zotero_errors, 'Forbidden', None): {
+            "description": "Access forbidden",
+            "hint": "Check API key permissions or resource access rights"
+        },
+        getattr(zotero_errors, 'NotFound', None): {
+            "description": "The requested resource was not found",
+            "hint": "Verify the item/collection key or ID exists in your library"
+        },
+        getattr(zotero_errors, 'ZoteroServerError', None): {
+            "description": "A Zotero server error occurred",
+            "hint": "Please try again later"
+        },
+        getattr(zotero_errors, 'PreconditionFailed', None): {
+            "description": "Precondition failed",
+            "details": "This can occur if a library version ('since') is too old, or due to a data conflict"
+        },
+        getattr(zotero_errors, 'MissingCredentials', None): {
+            "description": "Missing credentials for Zotero client",
+            "hint": "Configure API key, library ID, and library type"
+        },
+        getattr(zotero_errors, 'BadRequest', None): {
+            "description": "Bad request",
+            "hint": "Check parameters and data format"
+        },
+        getattr(zotero_errors, 'MethodNotSupported', None): {
+            "description": "The HTTP method is not supported for this resource"
+        },
+        getattr(zotero_errors, 'UnsupportedParams', None): {
+            "description": "One or more parameters are not supported by this Zotero API endpoint"
+        },
+        getattr(zotero_errors, 'ResourceGone', None): {
+            "description": "The resource is gone and no longer available"
+        },
     }
     # Remove None keys if any exception type isn't found (defensive)
-    error_messages = {k: v for k, v in error_messages.items() if k is not None}
+    error_mappings = {k: v for k, v in error_mappings.items() if k is not None}
 
-    matched_message = None
-    for exc_type, base_msg in error_messages.items():
+    matched_mapping = None
+    for exc_type, mapping in error_mappings.items():
         if isinstance(e, exc_type):
-            matched_message = f"Error: {base_msg} (Details: {str(e)})"
+            matched_mapping = mapping
             break
     
     # Add specific handling for HTTPError codes if not caught by the map above
-    if not matched_message and isinstance(e, getattr(zotero_errors, 'HTTPError', type(None))):
+    if not matched_mapping and isinstance(e, getattr(zotero_errors, 'HTTPError', type(None))):
         if hasattr(e, 'status_code'):
             if e.status_code == 404:
                 # Use the same message as NotFound for consistency
-                base_msg_404 = "The requested resource was not found."
-                matched_message = f"Error: {base_msg_404} (Details: {str(e)})"
-            # Potentially add other specific HTTP status code handlings here
-            # elif e.status_code == 403:
-            #     if not any(isinstance(e, ft) for ft in [getattr(zotero_errors, 'Forbidden', None), getattr(zotero_errors, 'UserNotAuthorisedError', None)] if ft): # Check if already handled by specific types
-            #         base_msg_403 = "Access forbidden. Check API key permissions or resource access rights."
-            #         matched_message = f"Error: {base_msg_403} (Details: {str(e)})"
+                matched_mapping = {
+                    "description": "The requested resource was not found",
+                    "hint": "Verify the item/collection key or ID exists in your library"
+                }
     
-    if not matched_message:
+    if matched_mapping:
+        # Extract error details from the exception string if concise
+        error_str = str(e)
+        details = error_str if len(error_str) < 100 else None
+        
+        formatted_message = format_error_message(
+            description=matched_mapping["description"],
+            details=matched_mapping.get("details") or details,
+            hint=matched_mapping.get("hint")
+        )
+    else:
         if isinstance(e, zotero_errors.PyZoteroError): # Broader PyZotero exception
-            matched_message = f"A PyZotero library error occurred: {str(e)}"
+            formatted_message = format_error_message(
+                description="A PyZotero library error occurred",
+                details=str(e)
+            )
         else: # Non-PyZotero exception
-            matched_message = f"An unexpected application error occurred: {type(e).__name__} - {str(e)}"
+            formatted_message = format_error_message(
+                description="An unexpected application error occurred",
+                details=f"{type(e).__name__} - {str(e)}"
+            )
 
-    click.echo(matched_message, err=True)
+    click.echo(formatted_message, err=True)
     
     is_debug_mode = False
     if ctx and hasattr(ctx, 'obj') and isinstance(ctx.obj, dict):
