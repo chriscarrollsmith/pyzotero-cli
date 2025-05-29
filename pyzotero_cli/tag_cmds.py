@@ -1,7 +1,7 @@
 import click
 import json
 from pyzotero import zotero
-from .utils import common_options
+from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception
 
 @click.group(name='tag')
 def tag_group():
@@ -24,19 +24,16 @@ def list_tags(ctx, **kwargs):
     params = {k: v for k, v in kwargs.items() if v is not None and k in 
              ['limit', 'start', 'sort', 'direction']}
     
-    # Get tags from the library
-    tags = zot.tags(**params)
-    
-    # Output based on format preference
-    output_format = kwargs.get('output', 'json')
-    if output_format == 'yaml':
-        import yaml
-        click.echo(yaml.dump(tags))
-    elif output_format == 'table':
-        for tag in tags:
-            click.echo(tag)
-    else:  # Default is JSON output
-        click.echo(json.dumps(tags))
+    try:
+        # Get tags from the library
+        tags = zot.tags(**params)
+        
+        # Use format_data_for_output for consistent formatting
+        output_format = kwargs.get('output', 'json')
+        click.echo(format_data_for_output(tags, output_format, preset_key='tag'))
+        
+    except Exception as e:
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @tag_group.command(name='list-for-item')
 @common_options
@@ -55,20 +52,14 @@ def list_item_tags(ctx, item_key, **kwargs):
     params = {k: v for k, v in kwargs.items() if v is not None and k in 
              ['limit', 'start', 'sort', 'direction']}
     
-    # Get tags for the specific item
     try:
+        # Get tags for the specific item
         tags = zot.item_tags(item_key, **params)
         
-        # Output based on format preference
+        # Use format_data_for_output for consistent formatting
         output_format = kwargs.get('output', 'json')
-        if output_format == 'yaml':
-            import yaml
-            click.echo(yaml.dump(tags))
-        elif output_format == 'table':
-            for tag in tags:
-                click.echo(tag)
-        else:  # Default is JSON output
-            click.echo(json.dumps(tags))
+        click.echo(format_data_for_output(tags, output_format, preset_key='tag'))
+        
     except Exception as e:
         # For the test case expecting error output to stdout instead of proper exception handling
         # This is a legacy behavior that should be updated but we'll maintain compatibility for now

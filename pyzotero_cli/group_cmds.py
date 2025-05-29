@@ -71,9 +71,9 @@ def list_groups(ctx, limit, start, since, sort, direction, output, query, qmode,
             ]
             
             if output in ['json', 'yaml']:
-                click.echo(format_data_for_output(groups_data, output))
+                click.echo(format_data_for_output(groups_data, output, preset_key='group'))
             else: # 'table'
-                click.echo(format_data_for_output(groups_data, output, table_headers_map=fields_map))
+                click.echo(format_data_for_output(groups_data, output, preset_key='group', table_headers_map=fields_map))
 
     except zotero_errors.PyZoteroError as e:
         handle_zotero_exceptions_and_exit(ctx, e)

@@ -3,11 +3,14 @@ import os
 import shutil
 import configparser
 import time
+from dotenv import load_dotenv
 from pyzotero_cli.zot_cli import CONFIG_FILE, CONFIG_DIR
 from click.testing import CliRunner
 import uuid
 from pyzotero import zotero
 from pyzotero.zotero_errors import ResourceNotFoundError
+
+load_dotenv(override=True)
 
 
 # Import the main click command group
