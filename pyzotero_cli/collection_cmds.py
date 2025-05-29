@@ -2,7 +2,7 @@ import click
 from .utils import (
     common_options, format_data_for_output, prepare_api_params, 
     output_option, pagination_options, sorting_options, filtering_options, versioning_option,
-    handle_zotero_exceptions_and_exit
+    handle_zotero_exceptions_and_exit, create_click_exception, check_batch_operation_results
 )
 from pyzotero import zotero
 from pyzotero.zotero_errors import PyZoteroError, HTTPError, ResourceNotFoundError, PreConditionFailedError
@@ -168,13 +168,14 @@ def collection_item_count(ctx, collection_key_or_id):
             count = collection_data['meta']['numItems']
             click.echo(f"Number of items in collection '{collection_key_or_id}': {count}")
         else:
-            click.echo(f"Could not retrieve item count for collection '{collection_key_or_id}'. Malformed response.", err=True)
-    except ResourceNotFoundError:
-        click.echo(f"Collection '{collection_key_or_id}' not found.", err=True)
+            raise create_click_exception(
+                description=f"Could not retrieve item count for collection '{collection_key_or_id}'",
+                details="Malformed response from API"
+            )
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @collection_group.command(name="versions")
 @click.option('--since', 'since_version', type=int, help='Retrieve objects modified after a library version.')
@@ -191,9 +192,9 @@ def collection_versions(ctx, since_version, output):
         results = zot_client.collection_versions(**kwargs_for_call)
         click.echo(format_data_for_output(results, output))
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @collection_group.command(name="create")
 @click.option('--name', 'collection_names', multiple=True, required=True, help='Name of the collection to create (can be specified multiple times).')
@@ -217,9 +218,9 @@ def collection_create(ctx, collection_names, parent_collection_id, limit, start,
         results = zot_client.create_collections(payloads)
         click.echo(format_data_for_output(results, output, preset_key='collection')) # Use format_data_for_output
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @collection_group.command(name="update")
 @click.argument('collection_key_or_id', required=True)
@@ -303,14 +304,8 @@ def collection_update(ctx, collection_key_or_id, new_name, new_parent_id, from_j
         results = zot_client.update_collection(collection_to_update)
         click.echo(format_data_for_output(results, output, preset_key='collection')) # Use format_data_for_output
 
-    except ResourceNotFoundError:
-        click.echo(f"Collection '{collection_key_or_id}' not found.", err=True)
-    except PreConditionFailedError as e:
-        click.echo(f"Failed to update collection '{collection_key_or_id}': Version mismatch. {e}", err=True)
-    except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @collection_group.command(name="delete")
 @click.argument('collection_key_or_id', nargs=-1, required=True)
@@ -374,6 +369,9 @@ def collection_delete(ctx, collection_key_or_id, last_modified_option, force, li
             results_summary.append({key_str_val: f"An unexpected error occurred for collection '{key_str_val}': {e}"})
             
     click.echo(format_data_for_output(results_summary, output)) # Use format_data_for_output
+    
+    # Check batch results and exit with code 1 if any failures occurred
+    check_batch_operation_results(results_summary, ctx)
 
 @collection_group.command(name="add-item")
 @click.argument('collection_key_or_id', required=True)
@@ -428,14 +426,22 @@ def collection_add_item(ctx, collection_key_or_id, item_key_or_id, limit, start,
                 results_summary.append({item_key: f"Unexpected error for item '{item_key}': {e}"})
         
         click.echo(format_data_for_output(results_summary, output)) # Use format_data_for_output
+        
+        # Check batch results and exit with code 1 if any failures occurred
+        check_batch_operation_results(results_summary, ctx)
 
     except ResourceNotFoundError: 
-        click.echo(f"Collection '{collection_key_or_id}' not found.", err=True)
+        raise create_click_exception(
+            description=f"Collection '{collection_key_or_id}' not found",
+            hint="Verify the collection key or ID exists in your library"
+        )
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
+    except click.exceptions.Exit:
+        # Let Exit exceptions bubble up (these are from ctx.exit() calls)
+        raise
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
-
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @collection_group.command(name="remove-item")
 @click.argument('collection_key_or_id', required=True)
@@ -494,13 +500,22 @@ def collection_remove_item(ctx, collection_key_or_id, item_key_or_id, force, lim
                 results_summary.append({item_key: f"Unexpected error for item '{item_key}': {e}"})
         
         click.echo(format_data_for_output(results_summary, output)) # Use format_data_for_output
+        
+        # Check batch results and exit with code 1 if any failures occurred
+        check_batch_operation_results(results_summary, ctx)
 
     except ResourceNotFoundError: 
-        click.echo(f"Collection '{collection_key_or_id}' not found.", err=True)
+        raise create_click_exception(
+            description=f"Collection '{collection_key_or_id}' not found",
+            hint="Verify the collection key or ID exists in your library"
+        )
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
+    except click.exceptions.Exit:
+        # Let Exit exceptions bubble up (these are from ctx.exit() calls)
+        raise
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @collection_group.command(name="tags")
 @click.argument('collection_key_or_id', required=True)

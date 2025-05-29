@@ -3,7 +3,7 @@ from .utils import (
     common_options, format_data_for_output, prepare_api_params,
     output_option, pagination_options, sorting_options, filtering_options, versioning_option,
     deleted_items_options, handle_zotero_exceptions_and_exit, check_unused_params,
-    create_click_exception
+    create_click_exception, check_batch_operation_results
 )
 from pyzotero.zotero_errors import PyZoteroError, HTTPError, ResourceNotFoundError, PreConditionFailedError
 from pyzotero import zotero
@@ -117,8 +117,7 @@ def item_list(ctx, top, publications, trash, deleted, limit, start, since, sort,
     except PyZoteroError as e:
         handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
-        ctx.exit(1)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @item_group.command(name="get")
 @click.argument('item_key_or_id', nargs=-1, required=True)
@@ -192,8 +191,7 @@ def item_get(ctx, item_key_or_id, limit, start, since, sort, direction, output, 
     except PyZoteroError as e:
         handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
-        ctx.exit(1)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @item_group.command(name="children")
 @click.argument('parent_item_key_or_id', required=True)
@@ -209,8 +207,7 @@ def item_children(ctx, parent_item_key_or_id, limit, start, since, sort, directi
     except PyZoteroError as e:
         handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
-        ctx.exit(1)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @item_group.command(name="count")
 @click.pass_context
@@ -253,7 +250,7 @@ def item_versions(ctx, since_version, output_format):
     except PyZoteroError as e:
         click.echo(f"Zotero API Error: {e}", err=True)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @item_group.command(name="create")
 @click.option('--from-json', 'from_json_input', help='Path to a JSON file or a JSON string describing the item(s).')
@@ -356,9 +353,9 @@ def item_create(ctx, from_json_input, template_type, fields, parent_item_id, lim
         click.echo(format_data_for_output(results, output, preset_key='item'))
 
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 
 @item_group.command(name="update")
@@ -460,9 +457,9 @@ def item_update(ctx, item_key_or_id, from_json_input, fields, last_modified_opti
         click.echo(format_data_for_output(output_data, output, preset_key='item'))
 
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 
 @item_group.command(name="delete")
@@ -534,6 +531,9 @@ def item_delete(ctx, item_key_or_id, last_modified_option, force, limit, start, 
             
     # Use format_data_for_output
     click.echo(format_data_for_output(results_summary, output, preset_key='item'))
+    
+    # Check batch results and exit with code 1 if any failures occurred
+    check_batch_operation_results(results_summary, ctx)
 
 
 @item_group.command(name="add-tags")
@@ -577,9 +577,9 @@ def item_add_tags(ctx, item_key_or_id, tag_names, limit, start, since, sort, dir
         click.echo(format_data_for_output(output_data, output, preset_key='item')) # Use format_data_for_output
 
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @item_group.command(name="bib")
 @click.option('--style', help="CSL style to use for formatting (e.g., 'apa', 'mla').")
@@ -612,9 +612,9 @@ def item_bib(ctx, style, linkwrap, item_key_or_id):
             click.echo(results)
 
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @item_group.command(name="citation")
 @click.option('--style', help="CSL style to use for formatting (e.g., 'apa', 'mla').")
@@ -640,9 +640,9 @@ def item_citation(ctx, style, item_key_or_id):
         else: # Or a single string
             click.echo(results)
     except PyZoteroError as e:
-        click.echo(f"Zotero API Error: {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True) 
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @item_group.command(name="deleted")
 @deleted_items_options
@@ -660,5 +660,4 @@ def item_deleted(ctx, since, output):
     except PyZoteroError as e:
         handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
-        click.echo(f"An unexpected error occurred: {e}", err=True)
-        ctx.exit(1) 
+        handle_zotero_exceptions_and_exit(ctx, e) 

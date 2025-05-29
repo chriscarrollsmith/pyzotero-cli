@@ -61,11 +61,6 @@ def list_item_tags(ctx, item_key, **kwargs):
         click.echo(format_data_for_output(tags, output_format, preset_key='tag'))
         
     except Exception as e:
-        # For the test case expecting error output to stdout instead of proper exception handling
-        # This is a legacy behavior that should be updated but we'll maintain compatibility for now
-        if "404" in str(e) or "Not found" in str(e):
-            click.echo(f"Error retrieving tags for item {item_key}: {str(e)}")
-            return
         handle_zotero_exceptions_and_exit(ctx, e)
 
 @tag_group.command(name='delete')

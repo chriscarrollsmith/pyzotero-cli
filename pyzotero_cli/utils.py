@@ -414,6 +414,43 @@ def format_error_message(description, context=None, details=None, hint=None):
     
     return ". ".join(parts) + "."
 
+def check_batch_operation_results(results_summary, ctx=None):
+    """
+    Checks batch operation results and determines if the command should exit with an error code.
+    
+    According to the stderr_formatting standard, batch operations should exit with code 1
+    if any of the primary targets failed, even if others succeeded.
+    
+    Args:
+        results_summary: List of dicts where each dict has a single key-value pair
+                        representing the target and its result status
+        ctx: Click context for exiting with appropriate code
+        
+    Returns:
+        bool: True if any failures were detected, False if all operations succeeded
+    """
+    if not results_summary:
+        return False
+    
+    # Check for any error messages in the results
+    failures_detected = False
+    
+    for result_dict in results_summary:
+        for target_key, status_message in result_dict.items():
+            # Check for common error indicators
+            if any(error_indicator in str(status_message).lower() for error_indicator in [
+                'error:', 'failed', 'not found', 'exception', 'unexpected error'
+            ]):
+                failures_detected = True
+                break
+        if failures_detected:
+            break
+    
+    if failures_detected and ctx:
+        ctx.exit(1)
+    
+    return failures_detected
+
 def create_click_exception(description, context=None, details=None, hint=None):
     """
     Creates a ClickException with properly formatted error message.
@@ -425,16 +462,36 @@ def create_click_exception(description, context=None, details=None, hint=None):
         hint: Optional user action suggestion
         
     Returns:
-        click.ClickException: Exception with formatted message
+        click.ClickException: Exception with formatted message (exit code 1)
     """
     message = format_error_message(description, context, details, hint)
     return click.ClickException(message)
 
+def create_usage_error(description, context=None, details=None, hint=None):
+    """
+    Creates a UsageError for command-line usage issues.
+    
+    Args:
+        description: Brief, user-friendly problem description
+        context: Optional relevant key/value information
+        details: Optional snippet from underlying error if concise and useful
+        hint: Optional user action suggestion
+        
+    Returns:
+        click.UsageError: Exception with formatted message (exit code 2)
+    """
+    message = format_error_message(description, context, details, hint)
+    return click.UsageError(message)
+
 def handle_zotero_exceptions_and_exit(ctx, e):
     """Handles PyZotero exceptions and prints user-friendly messages before exiting."""
     
-    # Let ClickException bubble up to Click's built-in handler
+    # Let ClickException and Exit bubble up to Click's built-in handler
     if isinstance(e, click.ClickException):
+        raise e
+    
+    # Let Click's Exit exception bubble up without treating it as an error
+    if isinstance(e, click.exceptions.Exit):
         raise e
     
     # Ensure all referenced zotero_errors attributes exist or use getattr

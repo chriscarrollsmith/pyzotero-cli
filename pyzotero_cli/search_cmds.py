@@ -1,24 +1,21 @@
 import click
 import json
 from pyzotero import zotero
-from pyzotero_cli.utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception
+from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, create_usage_error
 
 @click.group('search')
 @click.pass_context
 def search_group(ctx):
-    """Manage Zotero saved searches."""
-    # Ensure the zotero instance is created and passed if not already
-    if 'zot' not in ctx.obj:
-        try:
-            ctx.obj['zot'] = zotero.Zotero(
-                ctx.obj.get('LIBRARY_ID'),
-                ctx.obj.get('LIBRARY_TYPE'),
-                ctx.obj.get('API_KEY'),
-                locale=ctx.obj.get('LOCALE'),
-                local=ctx.obj.get('LOCAL', False)
-            )
-        except Exception as e:
-            handle_zotero_exceptions_and_exit(ctx, e)
+    """Commands for Zotero searches and saved searches."""
+    try:
+        ctx.obj['zot'] = zotero.Zotero(
+            library_id=ctx.obj['LIBRARY_ID'],
+            library_type=ctx.obj['LIBRARY_TYPE'],
+            api_key=ctx.obj['API_KEY'],
+            locale=ctx.obj['LOCALE']
+        )
+    except Exception as e:
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @search_group.command('list')
 @common_options # We'll refine which common options are applicable
@@ -68,14 +65,14 @@ def create_search(ctx, name, conditions_json_str, output):
             try:
                 conditions = json.loads(conditions_json_str)
             except json.JSONDecodeError:
-                raise create_click_exception(
+                raise create_usage_error(
                     description="--conditions-json input is not valid JSON or a findable file",
                     context=f"Input: '{conditions_json_str}'",
                     hint="Provide a valid JSON string or path to a JSON file"
                 )
 
         if not isinstance(conditions, list) or not all(isinstance(c, dict) for c in conditions):
-            raise create_click_exception(
+            raise create_usage_error(
                 description="Conditions JSON must be a list of condition objects",
                 hint="Format: [{'condition': 'title', 'operator': 'contains', 'value': 'ecology'}, ...]"
             )
@@ -83,7 +80,7 @@ def create_search(ctx, name, conditions_json_str, output):
         # Basic validation for condition structure (can be expanded)
         for cond in conditions:
             if not all(key in cond for key in ["condition", "operator", "value"]):
-                raise create_click_exception(
+                raise create_usage_error(
                     description="Each condition object must contain 'condition', 'operator', and 'value' keys",
                     context=f"Problematic condition: {cond}"
                 )

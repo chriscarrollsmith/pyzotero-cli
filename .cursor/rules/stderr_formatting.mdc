@@ -13,14 +13,17 @@ Follow these conventions for signifying the success or failure of operations in 
     *   A specific, actionable error from the Zotero API (e.g., invalid API key, permissions issue, rate limit, server error).
     *   **Crucially for "Not Found":** If the *primary target(s)* of a command are not found.
         *   For single-target commands (e.g., `get item X`): If X is not found, exit `1`.
-        *   For batch commands (e.g., `delete item X Y Z`): If *any* of X, Y, or Z are not found, the command should ideally exit `1` (or a distinct code like `3`). The output should still detail which ones were found/not found. This makes scripting more robust.
+        *   For batch commands (e.g., `delete item X Y Z`): If *any* of X, Y, or Z are not found, the command should ideally exit `1` (or a distinct code like `3`).
 *   **`2` (Usage Error):** Incorrect command-line flags, missing arguments, invalid option values. (Click handles this well with `UsageError`).
 
 ## Error message formatting conventions for our CLI tool
 
 *   Use `handle_zotero_exceptions_and_exit` from `pyzotero_cli/utils.py` as the primary handler for PyZotero API errors.
-*   For non-API errors (e.g., input validation before an API call that is not `click.UsageError`), use `click.ClickException("Error: ...")`.
+*   For non-API errors, use the appropriate helper from `pyzotero_cli/utils.py`:
+    *   **Usage errors** (incorrect command-line flags, missing arguments, invalid option values): Use `create_usage_error()` → **Exit code 2**
+    *   **Runtime errors** (input validation, file not found, processing errors): Use `create_click_exception()` → **Exit code 1**
 *   Use a consistent format: `Error: <Brief, user-friendly problem description>. [Context: <Relevant key/value if applicable>]. [Details: <Optional snippet from underlying error if concise and useful>]. [Hint: <Optional user action>]`.
 *   All error messages to `stderr`.
+*   Both helper functions automatically format messages according to the standard format above.
 
 

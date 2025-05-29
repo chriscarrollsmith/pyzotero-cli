@@ -77,8 +77,8 @@ def test_item_get_non_existent_item(runner: CliRunner):
     result = runner.invoke(zot, ['items', 'get', non_existent_key])
     # Updated to expect exit code 1 for non-existent item - this is the correct behavior
     assert result.exit_code == 1
-    # Check for key components of the error message
-    assert "A PyZotero library error occurred:" in result.output
+    # Check for the updated error message format
+    assert "Error: A PyZotero library error occurred." in result.output
     assert "Code: 404" in result.output
     assert "Response: Not found" in result.output
 
