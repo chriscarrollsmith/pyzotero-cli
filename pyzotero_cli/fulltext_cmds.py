@@ -1,7 +1,7 @@
 import click
 from pyzotero import zotero # Keep for type hinting if necessary, but not for instantiation here
 import json # For parsing JSON input in 'set' command
-from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception
+from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, parse_json_input
 
 @click.group("fulltext")
 @click.pass_context
@@ -90,77 +90,40 @@ def set_fulltext(ctx, item_key, payload_json_input):
             ctx.abort()
 
     try:
-        payload_dict = None
+        # Parse JSON input (either file path or JSON string)
+        payload_dict = parse_json_input(payload_json_input, "Full-text payload")
         
-        # First, determine if this looks like JSON or a file path
-        stripped_input = payload_json_input.strip()
-        looks_like_json = stripped_input.startswith(('{', '['))
-        
-        if looks_like_json:
-            # Input looks like JSON, so parse it as JSON and report JSON errors
-            try:
-                payload_dict = json.loads(payload_json_input)
-            except json.JSONDecodeError as json_err:
-                raise create_click_exception(
-                    description="Invalid JSON format",
-                    context=f"Input: '{payload_json_input}'",
-                    details=str(json_err)
-                )
-        else:
-            # Input doesn't look like JSON, treat as file path
-            try:
-                with open(payload_json_input, 'r') as f:
-                    payload_dict = json.load(f)
-            except FileNotFoundError:
-                raise create_click_exception(
-                    description="Input is not valid JSON or a findable file",
-                    context=f"Input: '{payload_json_input}'"
-                )
-            except json.JSONDecodeError:
-                raise create_click_exception(
-                    description="File contains invalid JSON",
-                    context=f"File: '{payload_json_input}'"
-                )
-            except Exception as e:
-                raise create_click_exception(
-                    description="Failed to read file",
-                    context=f"File: '{payload_json_input}'",
-                    details=str(e)
-                )
-        
-        if isinstance(payload_dict, dict):
-            # Now payload_dict is confirmed to be a dictionary.
-            if "content" not in payload_dict:
-                raise create_click_exception(
-                    description="Invalid payload format",
-                    details="Payload must have a 'content' key"
-                )
-            
-            has_pages = "indexedPages" in payload_dict and "totalPages" in payload_dict
-            has_chars = "indexedChars" in payload_dict and "totalChars" in payload_dict
-
-            if not (has_pages or has_chars):
-                raise create_click_exception(
-                    description="Incomplete payload format",
-                    details="Payload needs ('indexedPages' & 'totalPages') OR ('indexedChars' & 'totalChars')"
-                )
-            if has_pages and has_chars:
-                click.echo("Warning: Payload has both page and char counts. Behavior may vary.", err=True)
-
-            success = zot_instance.set_fulltext(item_key, payload_dict)
-            if success:
-                click.echo(f"Successfully set full-text for item '{item_key}'.")
-            else:
-                raise create_click_exception(
-                    description="Failed to set full-text content",
-                    context=f"Item key: '{item_key}'",
-                    details="API reported no success/error"
-                )
-        else:
-            # This case handles when payload_dict is None or not a dictionary (e.g. list, string from JSON)
+        if not isinstance(payload_dict, dict):
             raise create_click_exception(
                 description="Invalid payload format",
                 details="Parsed payload is not a JSON object (dictionary)"
+            )
+        
+        if "content" not in payload_dict:
+            raise create_click_exception(
+                description="Invalid payload format",
+                details="Payload must have a 'content' key"
+            )
+        
+        has_pages = "indexedPages" in payload_dict and "totalPages" in payload_dict
+        has_chars = "indexedChars" in payload_dict and "totalChars" in payload_dict
+
+        if not (has_pages or has_chars):
+            raise create_click_exception(
+                description="Incomplete payload format",
+                details="Payload needs ('indexedPages' & 'totalPages') OR ('indexedChars' & 'totalChars')"
+            )
+        if has_pages and has_chars:
+            click.echo("Warning: Payload has both page and char counts. Behavior may vary.", err=True)
+
+        success = zot_instance.set_fulltext(item_key, payload_dict)
+        if success:
+            click.echo(f"Successfully set full-text for item '{item_key}'.")
+        else:
+            raise create_click_exception(
+                description="Failed to set full-text content",
+                context=f"Item key: '{item_key}'",
+                details="API reported no success/error"
             )
 
     except Exception as e:

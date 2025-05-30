@@ -224,7 +224,7 @@ def test_fulltext_set_invalid_json_string(runner, active_profile_with_real_crede
 
     assert result.exit_code != 0
     # Now properly detects malformed JSON and reports JSON parsing error
-    assert "Error: Invalid JSON format" in result.output
+    assert "Error: Full-text payload is not valid JSON or a findable file" in result.output
     assert f"Context: Input: '{invalid_json}'" in result.output
 
 def test_fulltext_set_invalid_file_path(runner, active_profile_with_real_credentials, temp_attachment_item_key):
@@ -239,7 +239,7 @@ def test_fulltext_set_invalid_file_path(runner, active_profile_with_real_credent
     ])
 
     assert result.exit_code != 0
-    assert "Error: Input is not valid JSON or a findable file" in result.output
+    assert "Error: Full-text payload is not valid JSON or a findable file" in result.output
     assert f"Context: Input: '{non_existent_path}'" in result.output
 
 def test_fulltext_set_file_not_json(runner, active_profile_with_real_credentials, temp_attachment_item_key):

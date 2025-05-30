@@ -1,7 +1,7 @@
 import click
 import json
 from pyzotero import zotero
-from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, create_usage_error
+from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, create_usage_error, parse_json_input
 
 @click.group('search')
 @click.pass_context
@@ -54,22 +54,10 @@ def list_searches(ctx, limit, start, since, sort, direction, output, query, qmod
 def create_search(ctx, name, conditions_json_str, output):
     """Create a new saved search."""
     z = ctx.obj['zot']
-    conditions = []
+    
     try:
-        # Try to load from file first
-        try:
-            with open(conditions_json_str, 'r') as f:
-                conditions = json.load(f)
-        except FileNotFoundError:
-            # If not a file, try to parse as a JSON string
-            try:
-                conditions = json.loads(conditions_json_str)
-            except json.JSONDecodeError:
-                raise create_usage_error(
-                    description="--conditions-json input is not valid JSON or a findable file",
-                    context=f"Input: '{conditions_json_str}'",
-                    hint="Provide a valid JSON string or path to a JSON file"
-                )
+        # Parse JSON input (either file path or JSON string)
+        conditions = parse_json_input(conditions_json_str, "Conditions JSON")
 
         if not isinstance(conditions, list) or not all(isinstance(c, dict) for c in conditions):
             raise create_usage_error(

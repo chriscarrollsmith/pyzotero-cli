@@ -1,5 +1,6 @@
 import click
 import json as json_lib
+import os
 
 # --- Define a comprehensive list of known Zotero sort keys ---
 # This list is for user guidance; not all keys are valid for all endpoints.
@@ -482,6 +483,49 @@ def create_usage_error(description, context=None, details=None, hint=None):
     """
     message = format_error_message(description, context, details, hint)
     return click.UsageError(message)
+
+def parse_json_input(input_str, input_description="JSON input"):
+    """
+    Parse JSON input that can be either a file path or a JSON string.
+    
+    Args:
+        input_str: String that is either a file path or JSON content
+        input_description: Description of the input for error messages
+        
+    Returns:
+        The parsed JSON data (list, dict, etc.)
+        
+    Raises:
+        click.UsageError: If the input is not valid JSON or a readable file
+    """
+    # Check if input looks like a file path and exists
+    if os.path.exists(input_str):
+        # It's a file path
+        try:
+            with open(input_str, 'r') as f:
+                return json_lib.load(f)
+        except json_lib.JSONDecodeError:
+            raise create_usage_error(
+                description="File contains invalid JSON",
+                context=f"File: '{input_str}'",
+                hint="Ensure the file contains valid JSON"
+            )
+        except IOError as e:
+            raise create_usage_error(
+                description="Could not read file",
+                context=f"File: '{input_str}'",
+                details=str(e)
+            )
+    else:
+        # Treat as JSON string
+        try:
+            return json_lib.loads(input_str)
+        except json_lib.JSONDecodeError:
+            raise create_usage_error(
+                description=f"{input_description} is not valid JSON or a findable file",
+                context=f"Input: '{input_str}'",
+                hint="Provide a valid JSON string or path to a JSON file"
+            )
 
 def handle_zotero_exceptions_and_exit(ctx, e):
     """Handles PyZotero exceptions and prints user-friendly messages before exiting."""

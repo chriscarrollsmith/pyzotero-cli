@@ -238,9 +238,8 @@ def test_create_search_invalid_json_input(runner: CliRunner, active_profile_with
         'search', 'create', '--name', 'Bad Search', '--conditions-json', 'not_a_file_or_json'
     ]) # Catch exceptions is False by default, CLI handles it
 
-    assert result.exit_code == 1 # Expecting CLI validation error
-    assert "An unexpected application error occurred:" in result.output # Check for generic handler
-    assert "JSONDecodeError" in result.output # Specific error type
+    assert result.exit_code == 2 # Usage error should return exit code 2
+    assert "Error: Conditions JSON is not valid JSON or a findable file" in result.output
 
 def test_create_search_malformed_json_string(runner: CliRunner, active_profile_with_real_credentials):
     """Test create search with malformed JSON string."""
@@ -249,9 +248,8 @@ def test_create_search_malformed_json_string(runner: CliRunner, active_profile_w
         'search', 'create', '--name', 'Malformed', '--conditions-json', '{"key": "value", invalid json}'
     ])
     
-    assert result.exit_code == 1
-    assert "An unexpected application error occurred:" in result.output
-    assert "JSONDecodeError" in result.output
+    assert result.exit_code == 2 # Usage error should return exit code 2
+    assert "Error: Conditions JSON is not valid JSON or a findable file" in result.output
 
 def test_create_search_json_not_list(runner: CliRunner, active_profile_with_real_credentials):
     """Test create search where JSON is not a list."""
@@ -260,7 +258,7 @@ def test_create_search_json_not_list(runner: CliRunner, active_profile_with_real
         'search', 'create', '--name', 'Not List', '--conditions-json', '{"condition": "a"}' 
     ])
     
-    assert result.exit_code == 1
+    assert result.exit_code == 2 # Usage error should return exit code 2
     assert "Error: Conditions JSON must be a list of condition objects." in result.output
 
 def test_create_search_invalid_condition_structure(runner: CliRunner, active_profile_with_real_credentials):
@@ -271,7 +269,7 @@ def test_create_search_invalid_condition_structure(runner: CliRunner, active_pro
         'search', 'create', '--name', 'Bad Condition', '--conditions-json', invalid_conditions
     ])
     
-    assert result.exit_code == 1
+    assert result.exit_code == 2 # Usage error should return exit code 2
     assert "Error: Each condition object must contain 'condition', 'operator', and 'value' keys." in result.output
 
 
