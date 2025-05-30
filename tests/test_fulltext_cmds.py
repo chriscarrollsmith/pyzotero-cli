@@ -223,8 +223,9 @@ def test_fulltext_set_invalid_json_string(runner, active_profile_with_real_crede
     ]) # Don't catch exceptions here, Click should handle it
 
     assert result.exit_code != 0
-    assert "Error: Input" in result.output # Changed from stderr based on implementation
-    assert "is not valid JSON or a findable file." in result.output
+    # Now properly detects malformed JSON and reports JSON parsing error
+    assert "Error: Invalid JSON format" in result.output
+    assert f"Context: Input: '{invalid_json}'" in result.output
 
 def test_fulltext_set_invalid_file_path(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test 'set' with a non-existent file path."""
@@ -238,8 +239,8 @@ def test_fulltext_set_invalid_file_path(runner, active_profile_with_real_credent
     ])
 
     assert result.exit_code != 0
-    assert "Error: Input" in result.output
-    assert "is not valid JSON or a findable file." in result.output
+    assert "Error: Input is not valid JSON or a findable file" in result.output
+    assert f"Context: Input: '{non_existent_path}'" in result.output
 
 def test_fulltext_set_file_not_json(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test 'set' with a file containing invalid JSON."""
@@ -256,7 +257,8 @@ def test_fulltext_set_file_not_json(runner, active_profile_with_real_credentials
             '--from-json', tmp_file_path
         ])
         assert result.exit_code != 0
-        assert f"Error: File '{tmp_file_path}' is not valid JSON." in result.output
+        assert "Error: File contains invalid JSON" in result.output
+        assert f"Context: File: '{tmp_file_path}'" in result.output
     finally:
         os.remove(tmp_file_path)
 
@@ -272,7 +274,8 @@ def test_fulltext_set_missing_content_key(runner, active_profile_with_real_crede
         '--from-json', payload_json
     ])
     assert result.exit_code != 0
-    assert "Error: Payload must have a 'content' key." in result.output
+    assert "Error: Invalid payload format" in result.output
+    assert "Details: Payload must have a 'content' key" in result.output
 
 def test_fulltext_set_missing_counts(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test 'set' with payload missing required page OR char counts."""
@@ -286,7 +289,8 @@ def test_fulltext_set_missing_counts(runner, active_profile_with_real_credential
         '--from-json', payload_json
     ])
     assert result.exit_code != 0
-    assert "Error: Payload needs ('indexedPages' & 'totalPages') OR ('indexedChars' & 'totalChars')." in result.output
+    assert "Error: Incomplete payload format" in result.output
+    assert "Details: Payload needs ('indexedPages' & 'totalPages') OR ('indexedChars' & 'totalChars')" in result.output
 
 def test_fulltext_set_both_counts_warning(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test 'set' with payload having BOTH page and char counts (should warn but succeed)."""
@@ -355,7 +359,7 @@ def test_fulltext_get_item_not_attachment_or_no_fulltext(runner, active_profile_
     assert get_result.exit_code != 0 # Command should fail as PyZotero raises an error
     # Check stderr for the error message produced by handle_zotero_exceptions_and_exit
     # Based on observed behavior, it's the generic PyZoteroError message from the handler
-    assert "A PyZotero library error occurred:" in get_result.stderr
+    assert "Error: A PyZotero library error occurred" in get_result.stderr
     assert "Code: 404" in get_result.stderr # Specifics from the NotFound exception string
     assert "Response: Not found" in get_result.stderr
 
@@ -378,7 +382,7 @@ def test_fulltext_list_new_format_json(runner, active_profile_with_real_credenti
 
     # Expecting an AttributeError if 'since=0' causes an issue in pyzotero
     assert result.exit_code != 0
-    assert "An unexpected application error occurred: AttributeError" in result.stderr
+    assert "Error: An unexpected application error occurred" in result.stderr
     assert "'NoneType' object has no attribute 'headers'" in result.stderr
     # Ensure the success message for no content is not present if an error occurred
     assert "No new full-text content found" not in result.output
@@ -392,7 +396,7 @@ def test_fulltext_list_new_format_keys(runner, active_profile_with_real_credenti
 
     # Expecting an AttributeError if 'since=0' causes an issue in pyzotero
     assert result.exit_code != 0
-    assert "An unexpected application error occurred: AttributeError" in result.stderr
+    assert "Error: An unexpected application error occurred" in result.stderr
     assert "'NoneType' object has no attribute 'headers'" in result.stderr
     # Ensure the success message for no content is not present if an error occurred
     assert "No new full-text content found" not in result.output
@@ -406,7 +410,7 @@ def test_fulltext_list_new_format_table(runner, active_profile_with_real_credent
 
     # Expecting an AttributeError if 'since=0' causes an issue in pyzotero
     assert result.exit_code != 0
-    assert "An unexpected application error occurred: AttributeError" in result.stderr
+    assert "Error: An unexpected application error occurred" in result.stderr
     assert "'NoneType' object has no attribute 'headers'" in result.stderr
     # Ensure the success message for no content is not present if an error occurred
     assert "No new full-text content found" not in result.output
@@ -420,7 +424,7 @@ def test_fulltext_list_new_no_new_content(runner, active_profile_with_real_crede
     ], catch_exceptions=False)
 
     assert result.exit_code != 0
-    assert "An unexpected application error occurred: AttributeError" in result.stderr
+    assert "Error: An unexpected application error occurred" in result.stderr
     assert "'NoneType' object has no attribute 'headers'" in result.stderr
     # Ensure the specific "no content" message is not in output if an error occurred
     assert "No new full-text content found since the specified version." not in result.output

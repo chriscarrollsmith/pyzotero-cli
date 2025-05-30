@@ -91,9 +91,23 @@ def set_fulltext(ctx, item_key, payload_json_input):
 
     try:
         payload_dict = None
-        try:
-            payload_dict = json.loads(payload_json_input)
-        except json.JSONDecodeError:
+        
+        # First, determine if this looks like JSON or a file path
+        stripped_input = payload_json_input.strip()
+        looks_like_json = stripped_input.startswith(('{', '['))
+        
+        if looks_like_json:
+            # Input looks like JSON, so parse it as JSON and report JSON errors
+            try:
+                payload_dict = json.loads(payload_json_input)
+            except json.JSONDecodeError as json_err:
+                raise create_click_exception(
+                    description="Invalid JSON format",
+                    context=f"Input: '{payload_json_input}'",
+                    details=str(json_err)
+                )
+        else:
+            # Input doesn't look like JSON, treat as file path
             try:
                 with open(payload_json_input, 'r') as f:
                     payload_dict = json.load(f)
