@@ -1,6 +1,6 @@
 [project]
 name = "pyzotero-cli"
-version = "0.1.5"
+version = "0.1.6"
 description = "Use Zotero from the command line, e.g., for AI-assisted reference / citation management in academic writing — CLI wrapper for pyzotero"
 readme = "README.md"
 requires-python = ">=3.10"
