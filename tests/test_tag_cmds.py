@@ -131,8 +131,9 @@ def test_list_item_tags_json_output(temp_item_with_tags, runner: CliRunner):
 def test_list_item_tags_non_existent_item(runner: CliRunner):
     non_existent_key = f"NONEXISTENTKEY{uuid.uuid4()}" # Ensure truly non-existent
     result = runner.invoke(zot, ['tags', 'list-for-item', non_existent_key])
-    assert result.exit_code == 0 # Command handles error internally and prints to stderr
-    assert f"Error retrieving tags for item {non_existent_key}" in result.output
+    assert result.exit_code == 1 # Should exit 1 for "not found" errors
+    # Error should be handled by handle_zotero_exceptions_and_exit and go to stderr
+    assert "not found" in result.stderr.lower() or "error" in result.stderr.lower()
 
 
 # Tests for 'zot-cli tag delete'

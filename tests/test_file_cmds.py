@@ -160,7 +160,8 @@ def test_file_download_invalid_key(runner, active_profile_with_real_credentials,
     print(f"Download invalid key stdout:\n{result.stdout}") # Debugging
     print(f"Download invalid key stderr:\n{result.stderr}") # Debugging
     assert result.exit_code != 0 # Should fail
-    assert f"Error downloading file {parent_key}" in result.stderr
+    # Updated to expect the standardized error message format
+    assert "Error: An unexpected application error occurred." in result.stderr
     # Check for the actual error related to missing filename info
     assert "'filename'" in result.stderr
 
@@ -271,6 +272,19 @@ def test_file_upload_multiple_with_filename_warning(runner, active_profile_with_
             "File unchanged on server: test_attachment_1.txt" in result.stdout)
     assert ("Successfully uploaded: test_attachment_2.pdf" in result.stdout or \
             "File unchanged on server: test_attachment_2.pdf" in result.stdout)
+
+
+def test_file_upload_no_files_specified(runner, active_profile_with_real_credentials):
+    """Test that upload command with no files specified exits with usage error code 2."""
+    result = runner.invoke(zot, ['files', 'upload'])
+    
+    print(f"Upload no files stdout:\n{result.stdout}") # Debugging
+    print(f"Upload no files stderr:\n{result.stderr}") # Debugging
+    
+    # Should exit with code 2 (usage error) - Click handles this
+    assert result.exit_code == 2
+    assert "Missing argument 'PATHS_TO_LOCAL_FILE...'" in result.stderr
+    assert "Try 'zot files upload --help' for help" in result.stderr
 
 
 def test_file_upload_batch(runner, active_profile_with_real_credentials, temp_parent_item, temp_empty_attachment, temp_local_files, tmp_path, zot_instance):

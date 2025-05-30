@@ -2,13 +2,14 @@ import click
 from pyzotero import zotero_errors
 
 # Import shared utilities
-from .utils import format_data_for_output, handle_zotero_exceptions_and_exit, common_options
+from .utils import format_data_for_output, handle_zotero_exceptions_and_exit, common_options, initialize_zotero_client
 
 
 @click.group(name="group")
-def group_group():
+@click.pass_context
+def group_group(ctx):
     """Commands for interacting with Zotero groups."""
-    pass
+    ctx.obj['ZOTERO_CLIENT'] = initialize_zotero_client(ctx)
 
 @group_group.command("list")
 @common_options
@@ -71,9 +72,9 @@ def list_groups(ctx, limit, start, since, sort, direction, output, query, qmode,
             ]
             
             if output in ['json', 'yaml']:
-                click.echo(format_data_for_output(groups_data, output))
+                click.echo(format_data_for_output(groups_data, output, preset_key='group'))
             else: # 'table'
-                click.echo(format_data_for_output(groups_data, output, table_headers_map=fields_map))
+                click.echo(format_data_for_output(groups_data, output, preset_key='group', table_headers_map=fields_map))
 
     except zotero_errors.PyZoteroError as e:
         handle_zotero_exceptions_and_exit(ctx, e)

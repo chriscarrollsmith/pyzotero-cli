@@ -4,6 +4,8 @@ import configparser
 import json
 from click.testing import CliRunner
 from importlib.metadata import version
+import os
+from unittest.mock import patch
 
 
 def test_zot_help(runner: CliRunner):
@@ -172,8 +174,9 @@ def test_configure_current_profile_set_and_get(isolated_config, monkeypatch, run
 
     # Try to set a non-existent profile
     result_set_non_existent = runner.invoke(zot, ['configure', 'current-profile', 'nonexistent'])
-    assert result_set_non_existent.exit_code == 0 # Command exits 0 but prints error
-    assert "Error: Profile 'nonexistent' does not exist." in result_set_non_existent.output
+    assert result_set_non_existent.exit_code == 1 # Command should now exit with code 1 (runtime error)
+    assert "Error: Profile 'nonexistent' does not exist" in result_set_non_existent.output
+    assert "Hint: Create it first with 'zot configure setup --profile nonexistent'" in result_set_non_existent.output
 
     # Check that current profile is still prof1
     result_get3 = runner.invoke(zot, ['configure', 'current-profile'])
@@ -307,5 +310,15 @@ def test_zot_version(runner: CliRunner):
     version_str = result.output.strip()
     assert version_str.count('.') == 2  # Should have two dots for major.minor.patch
     assert all(part.isdigit() for part in version_str.split('.'))  # Each part should be numeric
+
+def test_credential_validation_exit_codes(isolated_config, runner: CliRunner):
+    """Test that missing credentials result in exit code 2 (usage error) not 1."""
+    # Clear environment variables to ensure no credentials are available
+    with patch.dict(os.environ, {k: '' for k in ['ZOTERO_API_KEY', 'ZOTERO_LIBRARY_ID', 'ZOTERO_LIBRARY_TYPE']}):
+        # Test missing API key (should be the first check to fail)
+        result = runner.invoke(zot, ['items', 'list'])
+        assert result.exit_code == 2  # Usage error, not runtime error
+        assert "Error: API key is required when not using --local mode" in result.output
+        assert "Hint: Set via --api-key, ZOTERO_API_KEY, or profile" in result.output
 
 # More tests will be added here 

@@ -2,21 +2,13 @@ import click
 import os
 import json
 from pyzotero import zotero
+from .utils import handle_zotero_exceptions_and_exit, create_click_exception, initialize_zotero_client
 
 @click.group(name='file')
 @click.pass_context
 def file_group(ctx):
     """Commands for managing Zotero file attachments."""
-    try:
-        ctx.obj['zot'] = zotero.Zotero(
-            library_id=ctx.obj['LIBRARY_ID'],
-            library_type=ctx.obj['LIBRARY_TYPE'],
-            api_key=ctx.obj['API_KEY'],
-            locale=ctx.obj['LOCALE']
-        )
-    except Exception as e:
-        click.echo(f"Error initializing Zotero instance: {e}", err=True)
-        ctx.exit(1)
+    ctx.obj['zot'] = initialize_zotero_client(ctx)
 
 @file_group.command(name='download')
 @click.argument('item_key_of_attachment', required=True)
@@ -57,10 +49,13 @@ def download_file(ctx, item_key_of_attachment, output):
             click.echo(f"File downloaded to: {full_path}")
 
     except Exception as e:
-        click.echo(f"Error downloading file {item_key_of_attachment}: {e}", err=True)
         if "404" in str(e) and "Not Found for " in str(e):
-             click.echo(f"Hint: Ensure '{item_key_of_attachment}' is the key of an attachment item, not its parent item.", err=True)
-        ctx.exit(1)
+            raise create_click_exception(
+                description=f"File attachment not found: {item_key_of_attachment}",
+                hint=f"Ensure '{item_key_of_attachment}' is the key of an attachment item, not its parent item"
+            )
+        else:
+            handle_zotero_exceptions_and_exit(ctx, e)
 
 @file_group.command(name='upload')
 @click.argument('paths_to_local_file', nargs=-1, type=click.Path(exists=True, dir_okay=False, readable=True), required=True)
@@ -70,10 +65,6 @@ def download_file(ctx, item_key_of_attachment, output):
 def upload_files(ctx, paths_to_local_file, parent_item_id, filename_option):
     """Upload file(s) as new attachment(s)."""
     zot_instance = ctx.obj['zot']
-
-    if not paths_to_local_file:
-        click.echo("Error: No local files specified for upload.", err=True)
-        return
 
     try:
         if len(paths_to_local_file) == 1:
@@ -121,7 +112,7 @@ def upload_files(ctx, paths_to_local_file, parent_item_id, filename_option):
             click.echo("No response from server or an issue occurred.", err=True)
 
     except Exception as e:
-        click.echo(f"Error uploading file(s): {e}", err=True)
+        handle_zotero_exceptions_and_exit(ctx, e)
 
 @file_group.command(name='upload-batch')
 @click.option('--json', 'json_manifest_path', type=click.Path(exists=True, dir_okay=False, readable=True), required=True, help='Path to a JSON manifest file for batch uploading.')
@@ -134,12 +125,17 @@ def upload_batch_files(ctx, json_manifest_path):
         with open(json_manifest_path, 'r') as f:
             manifest = json.load(f)
     except Exception as e:
-        click.echo(f"Error reading or parsing JSON manifest '{json_manifest_path}': {e}", err=True)
-        return
+        raise create_click_exception(
+            description=f"Failed to read or parse JSON manifest file",
+            context=f"File: {json_manifest_path}",
+            details=str(e)
+        )
 
     if not isinstance(manifest, list):
-        click.echo("Error: JSON manifest must be a list of objects.", err=True)
-        return
+        raise create_click_exception(
+            description="Invalid JSON manifest format",
+            details="JSON manifest must be a list of objects"
+        )
 
     attachments_to_upload = []
     created_items_info = [] # To hold info about newly created items before file upload

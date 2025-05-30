@@ -1,5 +1,6 @@
 import click
 import json as json_lib
+import os
 
 # --- Define a comprehensive list of known Zotero sort keys ---
 # This list is for user guidance; not all keys are valid for all endpoints.
@@ -387,52 +388,242 @@ def format_data_for_output(data, output_format, requested_fields_or_key=None, ta
     else: # Should not be reached if output_format is validated by click.Choice
         return json_lib.dumps(data)
 
+# Helper function for formatting error messages according to stderr_formatting standard
+def format_error_message(description, context=None, details=None, hint=None):
+    """
+    Formats error messages according to the stderr_formatting standard.
+    
+    Args:
+        description: Brief, user-friendly problem description
+        context: Optional relevant key/value information
+        details: Optional snippet from underlying error if concise and useful
+        hint: Optional user action suggestion
+        
+    Returns:
+        str: Formatted error message
+    """
+    parts = [f"Error: {description}"]
+    
+    if context:
+        parts.append(f"Context: {context}")
+    
+    if details:
+        parts.append(f"Details: {details}")
+        
+    if hint:
+        parts.append(f"Hint: {hint}")
+    
+    return ". ".join(parts) + "."
+
+def check_batch_operation_results(results_summary, ctx=None):
+    """
+    Checks batch operation results and determines if the command should exit with an error code.
+    
+    According to the stderr_formatting standard, batch operations should exit with code 1
+    if any of the primary targets failed, even if others succeeded.
+    
+    Args:
+        results_summary: List of dicts where each dict has a single key-value pair
+                        representing the target and its result status
+        ctx: Click context for exiting with appropriate code
+        
+    Returns:
+        bool: True if any failures were detected, False if all operations succeeded
+    """
+    if not results_summary:
+        return False
+    
+    # Check for any error messages in the results
+    failures_detected = False
+    
+    for result_dict in results_summary:
+        for target_key, status_message in result_dict.items():
+            # Check for common error indicators
+            if any(error_indicator in str(status_message).lower() for error_indicator in [
+                'error:', 'failed', 'not found', 'exception', 'unexpected error'
+            ]):
+                failures_detected = True
+                break
+        if failures_detected:
+            break
+    
+    if failures_detected and ctx:
+        ctx.exit(1)
+    
+    return failures_detected
+
+def create_click_exception(description, context=None, details=None, hint=None):
+    """
+    Creates a ClickException with properly formatted error message.
+    
+    Args:
+        description: Brief, user-friendly problem description
+        context: Optional relevant key/value information
+        details: Optional snippet from underlying error if concise and useful
+        hint: Optional user action suggestion
+        
+    Returns:
+        click.ClickException: Exception with formatted message (exit code 1)
+    """
+    message = format_error_message(description, context, details, hint)
+    return click.ClickException(message)
+
+def create_usage_error(description, context=None, details=None, hint=None):
+    """
+    Creates a UsageError for command-line usage issues.
+    
+    Args:
+        description: Brief, user-friendly problem description
+        context: Optional relevant key/value information
+        details: Optional snippet from underlying error if concise and useful
+        hint: Optional user action suggestion
+        
+    Returns:
+        click.UsageError: Exception with formatted message (exit code 2)
+    """
+    message = format_error_message(description, context, details, hint)
+    return click.UsageError(message)
+
+def parse_json_input(input_str, input_description="JSON input"):
+    """
+    Parse JSON input that can be either a file path or a JSON string.
+    
+    Args:
+        input_str: String that is either a file path or JSON content
+        input_description: Description of the input for error messages
+        
+    Returns:
+        The parsed JSON data (list, dict, etc.)
+        
+    Raises:
+        click.UsageError: If the input is not valid JSON or a readable file
+    """
+    # Check if input looks like a file path and exists
+    if os.path.exists(input_str):
+        # It's a file path
+        try:
+            with open(input_str, 'r') as f:
+                return json_lib.load(f)
+        except json_lib.JSONDecodeError:
+            raise create_usage_error(
+                description="File contains invalid JSON",
+                context=f"File: '{input_str}'",
+                hint="Ensure the file contains valid JSON"
+            )
+        except IOError as e:
+            raise create_usage_error(
+                description="Could not read file",
+                context=f"File: '{input_str}'",
+                details=str(e)
+            )
+    else:
+        # Treat as JSON string
+        try:
+            return json_lib.loads(input_str)
+        except json_lib.JSONDecodeError:
+            raise create_usage_error(
+                description=f"{input_description} is not valid JSON or a findable file",
+                context=f"Input: '{input_str}'",
+                hint="Provide a valid JSON string or path to a JSON file"
+            )
 
 def handle_zotero_exceptions_and_exit(ctx, e):
     """Handles PyZotero exceptions and prints user-friendly messages before exiting."""
+    
+    # Let ClickException and Exit bubble up to Click's built-in handler
+    if isinstance(e, click.ClickException):
+        raise e
+    
+    # Let Click's Exit exception bubble up without treating it as an error
+    if isinstance(e, click.exceptions.Exit):
+        raise e
+    
     # Ensure all referenced zotero_errors attributes exist or use getattr
-    error_messages = {
-        getattr(zotero_errors, 'RateLimitExceeded', None): "Zotero API rate limit exceeded. Please try again later.",
-        getattr(zotero_errors, 'InvalidAPIKey', None): "Invalid or missing Zotero API key.",
-        getattr(zotero_errors, 'Forbidden', None): "Access forbidden. Check API key permissions or resource access rights.",
-        getattr(zotero_errors, 'NotFound', None): "The requested resource was not found.",
-        getattr(zotero_errors, 'ZoteroServerError', None): "A Zotero server error occurred. Please try again later.",
-        getattr(zotero_errors, 'PreconditionFailed', None): "Precondition failed. This can occur if a library version ('since') is too old, or due to a data conflict (e.g., trying to update a deleted item).",
-        getattr(zotero_errors, 'MissingCredentials', None): "Missing credentials for Zotero client (e.g. API key for non-local, or library ID/type).",
-        getattr(zotero_errors, 'BadRequest', None): "Bad request. Check parameters and data format.",
-        getattr(zotero_errors, 'MethodNotSupported', None): "The HTTP method is not supported for this resource.",
-        getattr(zotero_errors, 'UnsupportedParams', None): "One or more parameters are not supported by this Zotero API endpoint.",
-        getattr(zotero_errors, 'ResourceGone', None): "The resource is gone and no longer available.",
+    error_mappings = {
+        getattr(zotero_errors, 'RateLimitExceeded', None): {
+            "description": "Zotero API rate limit exceeded",
+            "hint": "Please try again later"
+        },
+        getattr(zotero_errors, 'InvalidAPIKey', None): {
+            "description": "Invalid or missing Zotero API key",
+            "hint": "Check your API key configuration"
+        },
+        getattr(zotero_errors, 'Forbidden', None): {
+            "description": "Access forbidden",
+            "hint": "Check API key permissions or resource access rights"
+        },
+        getattr(zotero_errors, 'NotFound', None): {
+            "description": "The requested resource was not found",
+            "hint": "Verify the item/collection key or ID exists in your library"
+        },
+        getattr(zotero_errors, 'ZoteroServerError', None): {
+            "description": "A Zotero server error occurred",
+            "hint": "Please try again later"
+        },
+        getattr(zotero_errors, 'PreconditionFailed', None): {
+            "description": "Precondition failed",
+            "details": "This can occur if a library version ('since') is too old, or due to a data conflict"
+        },
+        getattr(zotero_errors, 'MissingCredentials', None): {
+            "description": "Missing credentials for Zotero client",
+            "hint": "Configure API key, library ID, and library type"
+        },
+        getattr(zotero_errors, 'BadRequest', None): {
+            "description": "Bad request",
+            "hint": "Check parameters and data format"
+        },
+        getattr(zotero_errors, 'MethodNotSupported', None): {
+            "description": "The HTTP method is not supported for this resource"
+        },
+        getattr(zotero_errors, 'UnsupportedParams', None): {
+            "description": "One or more parameters are not supported by this Zotero API endpoint"
+        },
+        getattr(zotero_errors, 'ResourceGone', None): {
+            "description": "The resource is gone and no longer available"
+        },
     }
     # Remove None keys if any exception type isn't found (defensive)
-    error_messages = {k: v for k, v in error_messages.items() if k is not None}
+    error_mappings = {k: v for k, v in error_mappings.items() if k is not None}
 
-    matched_message = None
-    for exc_type, base_msg in error_messages.items():
+    matched_mapping = None
+    for exc_type, mapping in error_mappings.items():
         if isinstance(e, exc_type):
-            matched_message = f"Error: {base_msg} (Details: {str(e)})"
+            matched_mapping = mapping
             break
     
     # Add specific handling for HTTPError codes if not caught by the map above
-    if not matched_message and isinstance(e, getattr(zotero_errors, 'HTTPError', type(None))):
+    if not matched_mapping and isinstance(e, getattr(zotero_errors, 'HTTPError', type(None))):
         if hasattr(e, 'status_code'):
             if e.status_code == 404:
                 # Use the same message as NotFound for consistency
-                base_msg_404 = "The requested resource was not found."
-                matched_message = f"Error: {base_msg_404} (Details: {str(e)})"
-            # Potentially add other specific HTTP status code handlings here
-            # elif e.status_code == 403:
-            #     if not any(isinstance(e, ft) for ft in [getattr(zotero_errors, 'Forbidden', None), getattr(zotero_errors, 'UserNotAuthorisedError', None)] if ft): # Check if already handled by specific types
-            #         base_msg_403 = "Access forbidden. Check API key permissions or resource access rights."
-            #         matched_message = f"Error: {base_msg_403} (Details: {str(e)})"
+                matched_mapping = {
+                    "description": "The requested resource was not found",
+                    "hint": "Verify the item/collection key or ID exists in your library"
+                }
     
-    if not matched_message:
+    if matched_mapping:
+        # Extract error details from the exception string if concise
+        error_str = str(e)
+        details = error_str if len(error_str) < 100 else None
+        
+        formatted_message = format_error_message(
+            description=matched_mapping["description"],
+            details=matched_mapping.get("details") or details,
+            hint=matched_mapping.get("hint")
+        )
+    else:
         if isinstance(e, zotero_errors.PyZoteroError): # Broader PyZotero exception
-            matched_message = f"A PyZotero library error occurred: {str(e)}"
+            formatted_message = format_error_message(
+                description="A PyZotero library error occurred",
+                details=str(e)
+            )
         else: # Non-PyZotero exception
-            matched_message = f"An unexpected application error occurred: {type(e).__name__} - {str(e)}"
+            formatted_message = format_error_message(
+                description="An unexpected application error occurred",
+                details=f"{type(e).__name__} - {str(e)}"
+            )
 
-    click.echo(matched_message, err=True)
+    click.echo(formatted_message, err=True)
     
     is_debug_mode = False
     if ctx and hasattr(ctx, 'obj') and isinstance(ctx.obj, dict):
@@ -446,4 +637,63 @@ def handle_zotero_exceptions_and_exit(ctx, e):
         ctx.exit(1)
     else: # If context is not available for some reason
         import sys
-        sys.exit(1) 
+        sys.exit(1)
+
+def initialize_zotero_client(ctx):
+    """
+    Centralized Zotero client initialization function.
+    
+    This function handles all the validation and initialization logic that was previously
+    duplicated across command group files. It validates credentials for remote operations,
+    handles local server configuration, and creates the Zotero client instance.
+    
+    Args:
+        ctx: Click context object containing configuration
+        
+    Returns:
+        zotero.Zotero: Initialized Zotero client instance
+        
+    Raises:
+        click.UsageError: If required configuration is missing
+        SystemExit: If client initialization fails
+    """
+    from pyzotero import zotero
+    from pyzotero.zotero_errors import PyZoteroError
+    
+    config = ctx.obj
+    
+    # Validate configuration for remote operations
+    if not config.get('LOCAL'):  # For remote operations, API key, lib ID/type are essential
+        if not config.get('API_KEY'):
+            raise click.UsageError(
+                "API Key is not configured. Please run 'zot configure setup --profile <profilename>' or set the ZOTERO_API_KEY environment variable."
+            )
+        if not config.get('LIBRARY_ID'):
+            raise click.UsageError(
+                "Library ID is not configured. Please run 'zot configure setup --profile <profilename>' or set the ZOTERO_LIBRARY_ID environment variable."
+            )
+        if not config.get('LIBRARY_TYPE'):
+            raise click.UsageError(
+                "Library Type is not configured. Please run 'zot configure setup --profile <profilename>' or set the ZOTERO_LIBRARY_TYPE environment variable."
+            )
+
+    # Handle local server configuration
+    use_local = config.get('LOCAL', False)
+    if isinstance(use_local, str):  # Ensure boolean if from config file
+        use_local = use_local.lower() == 'true'
+
+    try:
+        client = zotero.Zotero(
+            library_id=config.get('LIBRARY_ID'),
+            library_type=config.get('LIBRARY_TYPE'),
+            api_key=config.get('API_KEY'),
+            locale=config.get('LOCALE', 'en-US'),
+            local=use_local
+        )
+        return client
+    except PyZoteroError as e:
+        click.echo(f"Zotero API Error during client initialization: {e}", err=True)
+        ctx.exit(1)
+    except Exception as e:
+        click.echo(f"An unexpected error occurred during Zotero client initialization: {e}", err=True)
+        ctx.exit(1) 
