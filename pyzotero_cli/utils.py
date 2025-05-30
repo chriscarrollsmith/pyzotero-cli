@@ -637,4 +637,63 @@ def handle_zotero_exceptions_and_exit(ctx, e):
         ctx.exit(1)
     else: # If context is not available for some reason
         import sys
-        sys.exit(1) 
+        sys.exit(1)
+
+def initialize_zotero_client(ctx):
+    """
+    Centralized Zotero client initialization function.
+    
+    This function handles all the validation and initialization logic that was previously
+    duplicated across command group files. It validates credentials for remote operations,
+    handles local server configuration, and creates the Zotero client instance.
+    
+    Args:
+        ctx: Click context object containing configuration
+        
+    Returns:
+        zotero.Zotero: Initialized Zotero client instance
+        
+    Raises:
+        click.UsageError: If required configuration is missing
+        SystemExit: If client initialization fails
+    """
+    from pyzotero import zotero
+    from pyzotero.zotero_errors import PyZoteroError
+    
+    config = ctx.obj
+    
+    # Validate configuration for remote operations
+    if not config.get('LOCAL'):  # For remote operations, API key, lib ID/type are essential
+        if not config.get('API_KEY'):
+            raise click.UsageError(
+                "API Key is not configured. Please run 'zot configure setup --profile <profilename>' or set the ZOTERO_API_KEY environment variable."
+            )
+        if not config.get('LIBRARY_ID'):
+            raise click.UsageError(
+                "Library ID is not configured. Please run 'zot configure setup --profile <profilename>' or set the ZOTERO_LIBRARY_ID environment variable."
+            )
+        if not config.get('LIBRARY_TYPE'):
+            raise click.UsageError(
+                "Library Type is not configured. Please run 'zot configure setup --profile <profilename>' or set the ZOTERO_LIBRARY_TYPE environment variable."
+            )
+
+    # Handle local server configuration
+    use_local = config.get('LOCAL', False)
+    if isinstance(use_local, str):  # Ensure boolean if from config file
+        use_local = use_local.lower() == 'true'
+
+    try:
+        client = zotero.Zotero(
+            library_id=config.get('LIBRARY_ID'),
+            library_type=config.get('LIBRARY_TYPE'),
+            api_key=config.get('API_KEY'),
+            locale=config.get('LOCALE', 'en-US'),
+            local=use_local
+        )
+        return client
+    except PyZoteroError as e:
+        click.echo(f"Zotero API Error during client initialization: {e}", err=True)
+        ctx.exit(1)
+    except Exception as e:
+        click.echo(f"An unexpected error occurred during Zotero client initialization: {e}", err=True)
+        ctx.exit(1) 

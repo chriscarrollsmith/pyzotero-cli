@@ -2,13 +2,14 @@ import click
 from pyzotero import zotero_errors
 
 # Import shared utilities
-from .utils import format_data_for_output, handle_zotero_exceptions_and_exit, common_options
+from .utils import format_data_for_output, handle_zotero_exceptions_and_exit, common_options, initialize_zotero_client
 
 
 @click.group(name="group")
-def group_group():
+@click.pass_context
+def group_group(ctx):
     """Commands for interacting with Zotero groups."""
-    pass
+    ctx.obj['ZOTERO_CLIENT'] = initialize_zotero_client(ctx)
 
 @group_group.command("list")
 @common_options

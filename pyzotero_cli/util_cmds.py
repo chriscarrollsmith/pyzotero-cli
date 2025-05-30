@@ -1,6 +1,6 @@
 import click
 from pyzotero import zotero
-from .utils import format_data_for_output, handle_zotero_exceptions_and_exit
+from .utils import format_data_for_output, handle_zotero_exceptions_and_exit, initialize_zotero_client
 from typing import cast
 from tabulate import tabulate
 
@@ -16,12 +16,8 @@ def util_group(ctx):
 @click.pass_context
 def key_info(ctx, output):
     """Display API key permissions."""
-    config = ctx.obj
     try:
-        zot = zotero.Zotero(config.get('LIBRARY_ID'),
-                            config.get('LIBRARY_TYPE', 'user'), # Default to 'user' if not specified
-                            config.get('API_KEY'),
-                            locale=config.get('LOCALE', 'en-US'))
+        zot = initialize_zotero_client(ctx)
         key_data = zot.key_info()
         
         if output == 'table' and key_data:
@@ -46,13 +42,8 @@ def key_info(ctx, output):
 @click.pass_context
 def last_modified_version(ctx):
     """Get the library's last modified version."""
-    config = ctx.obj
     try:
-        zot = zotero.Zotero(config.get('LIBRARY_ID'),
-                            config.get('LIBRARY_TYPE', 'user'),
-                            config.get('API_KEY'),
-                            locale=config.get('LOCALE', 'en-US'),
-                            local=config.get('LOCAL', False)) # Pass local flag
+        zot = initialize_zotero_client(ctx)
         version = zot.last_modified_version()
         click.echo(version)
     except Exception as e:
@@ -63,16 +54,11 @@ def last_modified_version(ctx):
 @click.pass_context
 def item_types(ctx, output):
     """List all available item types."""
-    config = ctx.obj
     try:
         # For item_types, we don't need full Zotero client, can call class method
         # However, to respect potential 'local' or 'locale' settings if they were to influence this,
         # we instantiate, though pyzotero's item_types is static currently.
-        zot = zotero.Zotero(library_id=config.get('LIBRARY_ID'),
-                            library_type=config.get('LIBRARY_TYPE', 'user'),
-                            api_key=config.get('API_KEY'),
-                            locale=config.get('LOCALE', 'en-US'),
-                            local=config.get('LOCAL', False))
+        zot = initialize_zotero_client(ctx)
         types_data = zot.item_types()
         if output == 'table':
             headers = ["Item Type", "Localized Name"]
@@ -88,13 +74,8 @@ def item_types(ctx, output):
 @click.pass_context
 def item_fields(ctx, output):
     """List all available item fields."""
-    config = ctx.obj
     try:
-        zot = zotero.Zotero(library_id=config.get('LIBRARY_ID'),
-                            library_type=config.get('LIBRARY_TYPE', 'user'),
-                            api_key=config.get('API_KEY'),
-                            locale=config.get('LOCALE', 'en-US'),
-                            local=config.get('LOCAL', False))
+        zot = initialize_zotero_client(ctx)
         fields_data = zot.item_fields()
         if output == 'table':
             headers = ["Field", "Localized Name"]
@@ -111,13 +92,8 @@ def item_fields(ctx, output):
 @click.pass_context
 def item_type_fields(ctx, item_type, output):
     """List fields for a specific item type."""
-    config = ctx.obj
     try:
-        zot = zotero.Zotero(library_id=config.get('LIBRARY_ID'),
-                            library_type=config.get('LIBRARY_TYPE', 'user'),
-                            api_key=config.get('API_KEY'),
-                            locale=config.get('LOCALE', 'en-US'),
-                            local=config.get('LOCAL', False))
+        zot = initialize_zotero_client(ctx)
         type_fields_data = zot.item_type_fields(itemtype=item_type)
         if output == 'table':
             headers = ["Field", "Localized Name"]
@@ -135,13 +111,8 @@ def item_type_fields(ctx, item_type, output):
 @click.pass_context
 def item_template(ctx, item_type, linkmode, output): # Added output param for consistency, though only json
     """Generate an item template (for item create)."""
-    config = ctx.obj
     try:
-        zot = zotero.Zotero(library_id=config.get('LIBRARY_ID'),
-                            library_type=config.get('LIBRARY_TYPE', 'user'),
-                            api_key=config.get('API_KEY'),
-                            locale=config.get('LOCALE', 'en-US'),
-                            local=config.get('LOCAL', False))
+        zot = initialize_zotero_client(ctx)
         params = {}
         if linkmode:
             params['linkmode'] = linkmode

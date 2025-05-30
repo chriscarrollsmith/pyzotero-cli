@@ -2,7 +2,8 @@ import click
 from .utils import (
     common_options, format_data_for_output, prepare_api_params, 
     output_option, pagination_options, sorting_options, filtering_options, versioning_option,
-    handle_zotero_exceptions_and_exit, create_click_exception, check_batch_operation_results
+    handle_zotero_exceptions_and_exit, create_click_exception, check_batch_operation_results,
+    initialize_zotero_client
 )
 from pyzotero import zotero
 from pyzotero.zotero_errors import PyZoteroError, HTTPError, ResourceNotFoundError, PreConditionFailedError
@@ -13,39 +14,7 @@ import os
 @click.pass_context
 def collection_group(ctx):
     """Manage Zotero collections."""
-    config = ctx.obj
-    try:
-        if not config.get('LOCAL'): # For remote operations, API key, lib ID/type are essential
-            if not config.get('API_KEY'):
-                raise click.UsageError(
-                    "API Key is not configured. Please run 'zot configure setup --profile <profilename>' or set the ZOTERO_API_KEY environment variable."
-                )
-            if not config.get('LIBRARY_ID'):
-                raise click.UsageError(
-                    "Library ID is not configured. Please run 'zot configure setup --profile <profilename>' or set the ZOTERO_LIBRARY_ID environment variable."
-                )
-            if not config.get('LIBRARY_TYPE'):
-                raise click.UsageError(
-                    "Library Type is not configured. Please run 'zot configure setup --profile <profilename>' or set the ZOTERO_LIBRARY_TYPE environment variable."
-                )
-
-        use_local = config.get('LOCAL', False)
-        if isinstance(use_local, str): # Ensure boolean if from config file
-            use_local = use_local.lower() == 'true'
-
-        ctx.obj['zotero_client'] = zotero.Zotero(
-            library_id=config.get('LIBRARY_ID'),
-            library_type=config.get('LIBRARY_TYPE'),
-            api_key=config.get('API_KEY'),
-            locale=config.get('LOCALE', 'en-US'),
-            local=use_local
-        )
-    except PyZoteroError as e:
-        click.echo(f"Zotero API Error during client initialization: {e}", err=True)
-        ctx.exit(1)
-    except Exception as e:
-        click.echo(f"An unexpected error occurred during Zotero client initialization: {e}", err=True)
-        ctx.exit(1)
+    ctx.obj['zotero_client'] = initialize_zotero_client(ctx)
 
 @collection_group.command(name="list")
 @click.option('--top', is_flag=True, help='List top-level collections. Corresponds to Zotero.collections_top().')

@@ -1,24 +1,20 @@
 import click
 import json
 from pyzotero import zotero
-from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception
+from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, initialize_zotero_client
 
-@click.group(name='tag')
-def tag_group():
-    """Commands for working with Zotero tags."""
-    pass
+@click.group(name='tags')
+@click.pass_context
+def tag_group(ctx):
+    """Manage Zotero tags."""
+    ctx.obj['zot'] = initialize_zotero_client(ctx)
 
 @tag_group.command(name='list')
 @common_options
 @click.pass_context
 def list_tags(ctx, **kwargs):
     """List all tags in the library."""
-    zot = zotero.Zotero(
-        ctx.obj['LIBRARY_ID'],
-        ctx.obj['LIBRARY_TYPE'],
-        ctx.obj['API_KEY'],
-        locale=ctx.obj['LOCALE']
-    )
+    zot = ctx.obj['zot']
     
     # Extract relevant parameters for the tags call
     params = {k: v for k, v in kwargs.items() if v is not None and k in 
@@ -41,12 +37,7 @@ def list_tags(ctx, **kwargs):
 @click.pass_context
 def list_item_tags(ctx, item_key, **kwargs):
     """List tags for a specific item."""
-    zot = zotero.Zotero(
-        ctx.obj['LIBRARY_ID'],
-        ctx.obj['LIBRARY_TYPE'],
-        ctx.obj['API_KEY'],
-        locale=ctx.obj['LOCALE']
-    )
+    zot = ctx.obj['zot']
     
     # Extract relevant parameters for the item_tags call
     params = {k: v for k, v in kwargs.items() if v is not None and k in 
@@ -69,12 +60,7 @@ def list_item_tags(ctx, item_key, **kwargs):
 @click.pass_context
 def delete_tags(ctx, tag_names, force):
     """Delete tag(s) from the library."""
-    zot = zotero.Zotero(
-        ctx.obj['LIBRARY_ID'],
-        ctx.obj['LIBRARY_TYPE'],
-        ctx.obj['API_KEY'],
-        locale=ctx.obj['LOCALE']
-    )
+    zot = ctx.obj['zot']
     
     if not force and not ctx.obj.get('NO_INTERACTION'):
         if not click.confirm(f"Are you sure you want to delete the following tags: {', '.join(tag_names)}?"):

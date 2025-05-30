@@ -1,21 +1,13 @@
 import click
 import json
 from pyzotero import zotero
-from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, create_usage_error, parse_json_input
+from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, create_usage_error, parse_json_input, initialize_zotero_client
 
 @click.group('search')
 @click.pass_context
 def search_group(ctx):
     """Commands for Zotero searches and saved searches."""
-    try:
-        ctx.obj['zot'] = zotero.Zotero(
-            library_id=ctx.obj['LIBRARY_ID'],
-            library_type=ctx.obj['LIBRARY_TYPE'],
-            api_key=ctx.obj['API_KEY'],
-            locale=ctx.obj['LOCALE']
-        )
-    except Exception as e:
-        handle_zotero_exceptions_and_exit(ctx, e)
+    ctx.obj['zot'] = initialize_zotero_client(ctx)
 
 @search_group.command('list')
 @common_options # We'll refine which common options are applicable

@@ -2,21 +2,13 @@ import click
 import os
 import json
 from pyzotero import zotero
-from .utils import handle_zotero_exceptions_and_exit, create_click_exception
+from .utils import handle_zotero_exceptions_and_exit, create_click_exception, initialize_zotero_client
 
 @click.group(name='file')
 @click.pass_context
 def file_group(ctx):
     """Commands for managing Zotero file attachments."""
-    try:
-        ctx.obj['zot'] = zotero.Zotero(
-            library_id=ctx.obj['LIBRARY_ID'],
-            library_type=ctx.obj['LIBRARY_TYPE'],
-            api_key=ctx.obj['API_KEY'],
-            locale=ctx.obj['LOCALE']
-        )
-    except Exception as e:
-        handle_zotero_exceptions_and_exit(ctx, e)
+    ctx.obj['zot'] = initialize_zotero_client(ctx)
 
 @file_group.command(name='download')
 @click.argument('item_key_of_attachment', required=True)

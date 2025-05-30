@@ -1,21 +1,13 @@
 import click
 from pyzotero import zotero # Keep for type hinting if necessary, but not for instantiation here
 import json # For parsing JSON input in 'set' command
-from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, parse_json_input
+from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, parse_json_input, initialize_zotero_client
 
 @click.group("fulltext")
 @click.pass_context
 def fulltext_group(ctx):
     """Commands for working with Zotero full-text content."""
-    try:
-        ctx.obj['zot'] = zotero.Zotero(
-            library_id=ctx.obj['LIBRARY_ID'],
-            library_type=ctx.obj['LIBRARY_TYPE'],
-            api_key=ctx.obj['API_KEY'],
-            locale=ctx.obj['LOCALE']
-        )
-    except Exception as e:
-        handle_zotero_exceptions_and_exit(ctx, e)
+    ctx.obj['zot'] = initialize_zotero_client(ctx)
 
 
 @fulltext_group.command("get")
