@@ -36,7 +36,7 @@ def temp_tag_in_library(zot_instance):
         print(f"Error during tag fixture cleanup (deleting item {item_key}): {e}")
 
 # Tests for 'zot-cli tag list'
-def test_list_tags_default_output(temp_tag_in_library, runner: CliRunner):
+def test_list_tags_default_output(temp_tag_in_library, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_check = temp_tag_in_library
     result = runner.invoke(zot, ['tags', 'list'])
     assert result.exit_code == 0
@@ -47,7 +47,7 @@ def test_list_tags_default_output(temp_tag_in_library, runner: CliRunner):
     except json.JSONDecodeError:
         pytest.fail(f"Default output was not valid JSON: {result.output}")
 
-def test_list_tags_json_output(temp_tag_in_library, runner: CliRunner):
+def test_list_tags_json_output(temp_tag_in_library, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_check = temp_tag_in_library
     result = runner.invoke(zot, ['tags', 'list', '--output', 'json'])
     assert result.exit_code == 0
@@ -58,7 +58,7 @@ def test_list_tags_json_output(temp_tag_in_library, runner: CliRunner):
     except json.JSONDecodeError:
         pytest.fail(f"Output was not valid JSON: {result.output}")
 
-def test_list_tags_yaml_output(temp_tag_in_library, runner: CliRunner):
+def test_list_tags_yaml_output(temp_tag_in_library, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_check = temp_tag_in_library
     result = runner.invoke(zot, ['tags', 'list', '--output', 'yaml'])
     assert result.exit_code == 0
@@ -69,7 +69,7 @@ def test_list_tags_yaml_output(temp_tag_in_library, runner: CliRunner):
     except yaml.YAMLError:
         pytest.fail(f"Output was not valid YAML: {result.output}")
 
-def test_list_tags_with_limit(zot_instance, runner: CliRunner):
+def test_list_tags_with_limit(zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     zot_api_client = zot_instance
     tag1 = f"limit-tag1-{uuid.uuid4()}"
     tag2 = f"limit-tag2-{uuid.uuid4()}"
@@ -106,7 +106,7 @@ def test_list_tags_with_limit(zot_instance, runner: CliRunner):
 
 
 # Tests for 'zot-cli tag list-for-item'
-def test_list_item_tags_default_output(temp_item_with_tags, runner: CliRunner):
+def test_list_item_tags_default_output(temp_item_with_tags, active_profile_with_real_credentials, runner: CliRunner):
     item_key, expected_tags = temp_item_with_tags
     result = runner.invoke(zot, ['tags', 'list-for-item', item_key])
     assert result.exit_code == 0
@@ -117,7 +117,7 @@ def test_list_item_tags_default_output(temp_item_with_tags, runner: CliRunner):
     except json.JSONDecodeError:
         pytest.fail(f"Default output was not valid JSON: {result.output}")
 
-def test_list_item_tags_json_output(temp_item_with_tags, runner: CliRunner):
+def test_list_item_tags_json_output(temp_item_with_tags, active_profile_with_real_credentials, runner: CliRunner):
     item_key, expected_tags = temp_item_with_tags
     result = runner.invoke(zot, ['tags', 'list-for-item', item_key, '--output', 'json'])
     assert result.exit_code == 0
@@ -137,7 +137,7 @@ def test_list_item_tags_non_existent_item(runner: CliRunner, active_profile_with
 
 
 # Tests for 'zot-cli tag delete'
-def test_delete_tag_force(temp_tag_in_library, zot_instance, runner: CliRunner):
+def test_delete_tag_force(temp_tag_in_library, zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_delete = temp_tag_in_library
     zot_api_client = zot_instance
 
@@ -148,7 +148,7 @@ def test_delete_tag_force(temp_tag_in_library, zot_instance, runner: CliRunner):
     assert f"Successfully deleted tags: {tag_to_delete}" in result.output
     assert tag_to_delete not in zot_api_client.tags(), "Tag should be deleted from the library."
 
-def test_delete_multiple_tags_force(zot_instance, runner: CliRunner):
+def test_delete_multiple_tags_force(zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     zot_api_client = zot_instance
     tag1 = f"del-multi1-{uuid.uuid4()}"
     tag2 = f"del-multi2-{uuid.uuid4()}"
@@ -169,7 +169,7 @@ def test_delete_multiple_tags_force(zot_instance, runner: CliRunner):
         assert tag2 in library_tags_before
 
         result = runner.invoke(zot, ['tags', 'delete', tag1, tag2, '--force'])
-        assert result.exit_code == 0
+        assert result.exit_code == 0, f"CLI failed: stdout={result.output}, stderr={result.stderr if hasattr(result, 'stderr') else 'N/A'}"
         assert "Successfully deleted tags" in result.output
         assert tag1 in result.output
         assert tag2 in result.output
@@ -195,7 +195,7 @@ def test_delete_multiple_tags_force(zot_instance, runner: CliRunner):
             print(f"Error during safeguard tag deletion ('{tag1}', '{tag2}'): {e}")
             traceback.print_exc()
 
-def test_delete_tag_interactive_confirm_yes(temp_tag_in_library, zot_instance, runner: CliRunner):
+def test_delete_tag_interactive_confirm_yes(temp_tag_in_library, zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_delete = temp_tag_in_library
     zot_api_client = zot_instance
     assert tag_to_delete in zot_api_client.tags()
@@ -206,7 +206,7 @@ def test_delete_tag_interactive_confirm_yes(temp_tag_in_library, zot_instance, r
     assert "Are you sure you want to delete" in result.output # Check prompt was shown
     assert tag_to_delete not in zot_api_client.tags()
 
-def test_delete_tag_interactive_confirm_no(temp_tag_in_library, zot_instance, runner: CliRunner):
+def test_delete_tag_interactive_confirm_no(temp_tag_in_library, zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_delete = temp_tag_in_library
     zot_api_client = zot_instance
     assert tag_to_delete in zot_api_client.tags()
@@ -217,14 +217,14 @@ def test_delete_tag_interactive_confirm_no(temp_tag_in_library, zot_instance, ru
     assert "Are you sure you want to delete" in result.output
     assert tag_to_delete in zot_api_client.tags() # Tag should still exist
 
-def test_delete_tag_no_interaction_flag(temp_tag_in_library, zot_instance, runner: CliRunner):
+def test_delete_tag_no_interaction_flag(temp_tag_in_library, zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_delete = temp_tag_in_library
     zot_api_client = zot_instance
     assert tag_to_delete in zot_api_client.tags()
 
     # The --no-interaction flag is a top-level option for zot_cli
     result = runner.invoke(zot, ['--no-interaction', 'tags', 'delete', tag_to_delete])
-    assert result.exit_code == 0
+    assert result.exit_code == 0, f"CLI failed: stdout={result.output}, stderr={result.stderr if hasattr(result, 'stderr') else 'N/A'}"
     assert f"Successfully deleted tags: {tag_to_delete}" in result.output
     assert "Are you sure you want to delete" not in result.output # Prompt should be skipped
     assert tag_to_delete not in zot_api_client.tags()
