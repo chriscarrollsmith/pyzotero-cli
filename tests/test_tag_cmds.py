@@ -28,10 +28,11 @@ def temp_tag_in_library(zot_instance):
 
     yield tag_name # Yield the tag name to the test
 
-    # Cleanup
+    # Cleanup - re-fetch item to get latest version before deleting
     try:
-        if created_item and item_key:
-            zot_api_client.delete_item(created_item) # Delete the temporary item
+        if item_key:
+            fresh_item = zot_api_client.item(item_key)
+            zot_api_client.delete_item(fresh_item)
     except Exception as e:
         print(f"Error during tag fixture cleanup (deleting item {item_key}): {e}")
 
