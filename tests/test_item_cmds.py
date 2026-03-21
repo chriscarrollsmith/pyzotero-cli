@@ -35,7 +35,7 @@ def test_item_list_output_table(runner: CliRunner, active_profile_with_real_cred
     assert result.exit_code == 0
     assert "Key" in result.output or "Title" in result.output or "No data to display." in result.output # Check for table headers or empty message
 
-def test_item_list_output_keys(runner: CliRunner, zot_instance):
+def test_item_list_output_keys(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test `zot items list --output keys`."""
     # Ensure there's at least one item to get a key from
     items = zot_instance.top(limit=1)
@@ -54,7 +54,7 @@ def test_item_list_output_keys(runner: CliRunner, zot_instance):
         assert result.output.strip() == "" or len(output_lines[0]) == 8, "Output is empty or a key"
 
 # Test for `zot items get`
-def test_item_get_single_item(runner: CliRunner, temp_item_with_tags):
+def test_item_get_single_item(runner: CliRunner, temp_item_with_tags, active_profile_with_real_credentials):
     """Test `zot items get <item_key>` for an existing item."""
     item_key, _ = temp_item_with_tags # This fixture creates an item
     result = runner.invoke(zot, ['items', 'get', item_key])
@@ -83,7 +83,7 @@ def test_item_get_non_existent_item(runner: CliRunner, active_profile_with_real_
     assert "Response: Not found" in result.output
 
 # Test for `zot items create`, `delete`
-def test_item_create_and_delete(runner: CliRunner, zot_instance):
+def test_item_create_and_delete(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test creating an item and then deleting it."""
     item_title = f"Test Book Created by CLI - {uuid.uuid4()}" # Use uuid for uniqueness
     
@@ -169,7 +169,7 @@ def test_item_create_and_delete(runner: CliRunner, zot_instance):
 
 
 # Test for `zot items add-tags`
-def test_item_add_tags(runner: CliRunner, zot_instance):
+def test_item_add_tags(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test adding tags to an item."""
     # 1. Create a temporary item using zot_instance for simplicity in getting key/version
     template = zot_instance.item_template('journalArticle')
@@ -277,7 +277,7 @@ def test_item_add_tags(runner: CliRunner, zot_instance):
 
 
 # Test for `zot items update`
-def test_item_update_field(runner: CliRunner, zot_instance):
+def test_item_update_field(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test updating an item's field using --field."""
     # 1. Create item using zot_instance
     template = zot_instance.item_template('book')
@@ -349,7 +349,7 @@ def test_item_update_field(runner: CliRunner, zot_instance):
                  except Exception as ex_clean:
                      print(f"Secondary cleanup attempt failed for item {item_key}: {ex_clean}")
 
-def test_item_update_from_json_string(runner: CliRunner, zot_instance):
+def test_item_update_from_json_string(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test updating an item using --from-json with a JSON string."""
     # 1. Create item
     template = zot_instance.item_template('journalArticle')
@@ -423,7 +423,7 @@ def test_item_update_from_json_string(runner: CliRunner, zot_instance):
                 except Exception: pass
 
 # Test for `items children`
-def test_item_children(runner: CliRunner, zot_instance):
+def test_item_children(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test `zot items children <parent_key>`."""
     # 1. Create a parent item
     parent_template = zot_instance.item_template('journalArticle')
@@ -491,7 +491,7 @@ def test_item_count(runner: CliRunner, active_profile_with_real_credentials):
         pytest.fail(f"Could not parse item count from output: {result.output}\nError: {e}")
 
 # Tests for `items bib` and `items citation`
-def test_item_bib_and_citation(runner: CliRunner, zot_instance):
+def test_item_bib_and_citation(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test `zot items bib <key>` and `zot items citation <key>`."""
     # 1. Create a temporary item
     template = zot_instance.item_template('book')
@@ -530,7 +530,7 @@ def test_item_bib_and_citation(runner: CliRunner, zot_instance):
             print(f"Error cleaning up item {item_key} in bib/citation test: {e}")
 
 # Test for `items get` with different output formats
-def test_item_get_with_bibtex_format(runner: CliRunner, temp_item_with_tags):
+def test_item_get_with_bibtex_format(runner: CliRunner, temp_item_with_tags, active_profile_with_real_credentials):
     """Test `zot items get <item_key> --output bibtex` returns BibTeX format."""
     item_key, _ = temp_item_with_tags
     result = runner.invoke(zot, ['items', 'get', item_key, '--output', 'bibtex'])
@@ -545,7 +545,7 @@ def test_item_get_with_bibtex_format(runner: CliRunner, temp_item_with_tags):
         # Expected - output should not be valid JSON
         pass
 
-def test_item_get_with_csljson_format(runner: CliRunner, temp_item_with_tags):
+def test_item_get_with_csljson_format(runner: CliRunner, temp_item_with_tags, active_profile_with_real_credentials):
     """Test `zot items get <item_key> --output csljson` returns CSL-JSON format."""
     item_key, _ = temp_item_with_tags
     result = runner.invoke(zot, ['items', 'get', item_key, '--output', 'csljson'])
@@ -570,7 +570,7 @@ def test_item_get_with_csljson_format(runner: CliRunner, temp_item_with_tags):
     except KeyError as e:
         pytest.fail(f"Error accessing CSL-JSON data: {e}")
 
-def test_item_get_with_bib_format_and_style(runner: CliRunner, zot_instance):
+def test_item_get_with_bib_format_and_style(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test `zot items get <item_key> --output bib --style <style>`."""
     # 1. Create a temporary item with identifiable details
     template = zot_instance.item_template('book')
@@ -602,7 +602,7 @@ def test_item_get_with_bib_format_and_style(runner: CliRunner, zot_instance):
         except Exception as e:
             print(f"Error cleaning up item {item_key} in bib style test: {e}")
 
-def test_item_get_with_bib_format_and_linkwrap(runner: CliRunner, zot_instance):
+def test_item_get_with_bib_format_and_linkwrap(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test `zot items get <item_key> --output bib --linkwrap`."""
     # 1. Create a temporary item with a URL
     template = zot_instance.item_template('webpage')
