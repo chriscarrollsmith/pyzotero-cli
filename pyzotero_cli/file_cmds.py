@@ -98,12 +98,10 @@ def upload_files(ctx, paths_to_local_file, parent_item_id, filename_option):
         if response:
             click.echo("Upload results:")
             if 'success' in response and response['success']:
-                # attachment_simple/both success value is a dict {index: {details}}
-                for _index, details in response['success'].items(): 
-                    # Use filename from details if available, fallback to index as key placeholder
+                for details in response['success']:
                     click.echo(f"  Successfully uploaded: {details.get('filename', '?')} (Key: {details.get('key', '?')})")
             if 'failure' in response and response['failure']:
-                for _index, details in response['failure'].items():
+                for details in response['failure']:
                     click.echo(f"  Failed to upload: {details.get('filename', '?')}. Reason: {details.get('message', 'Unknown error')}", err=True)
             if 'unchanged' in response and response['unchanged']:
                 # unchanged value is a list of dicts [{details}]
