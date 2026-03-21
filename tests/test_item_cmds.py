@@ -5,7 +5,7 @@ from pyzotero_cli.zot_cli import zot # Import the main command group
 import uuid
 
 # Test for `zot items list`
-def test_item_list_default_json_output(runner: CliRunner):
+def test_item_list_default_json_output(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items list` returns JSON by default and is not empty."""
     result = runner.invoke(zot, ['items', 'list', '--limit', '1'])
     assert result.exit_code == 0
@@ -19,7 +19,7 @@ def test_item_list_default_json_output(runner: CliRunner):
     except json.JSONDecodeError:
         pytest.fail("Output was not valid JSON.")
 
-def test_item_list_top_flag(runner: CliRunner):
+def test_item_list_top_flag(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items list --top`."""
     result = runner.invoke(zot, ['items', 'list', '--top', '--limit', '1'])
     assert result.exit_code == 0
@@ -29,7 +29,7 @@ def test_item_list_top_flag(runner: CliRunner):
     except json.JSONDecodeError:
         pytest.fail("Output was not valid JSON for --top flag.")
 
-def test_item_list_output_table(runner: CliRunner):
+def test_item_list_output_table(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items list --output table`."""
     result = runner.invoke(zot, ['items', 'list', '--limit', '1', '--output', 'table'])
     assert result.exit_code == 0
@@ -71,7 +71,7 @@ def test_item_get_single_item(runner: CliRunner, temp_item_with_tags):
     except json.JSONDecodeError:
         pytest.fail("Output was not valid JSON for item get.")
 
-def test_item_get_non_existent_item(runner: CliRunner):
+def test_item_get_non_existent_item(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items get <item_key>` for a non-existent item."""
     non_existent_key = "NONEXIST" # A key that is unlikely to exist
     result = runner.invoke(zot, ['items', 'get', non_existent_key])
@@ -478,7 +478,7 @@ def test_item_children(runner: CliRunner, zot_instance):
             print(f"Error cleaning up parent item {parent_item_key}: {e_parent}")
 
 # Test for `items count`
-def test_item_count(runner: CliRunner):
+def test_item_count(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items count`."""
     result = runner.invoke(zot, ['items', 'count'])
     assert result.exit_code == 0
