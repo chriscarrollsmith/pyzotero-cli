@@ -5,7 +5,7 @@ from importlib.metadata import version
 from pyzotero_cli.utils import common_options # Import common_options
 from pyzotero import zotero as pyzotero_client # Import the client class
 from pyzotero import zotero_errors # Import exceptions
-from .utils import handle_zotero_exceptions_and_exit # Import error handler
+from .utils import handle_zotero_exceptions_and_exit, create_click_exception, create_usage_error # Import error handler
 
 # Define the configuration directory and file path
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".config", "zotcli")
@@ -155,14 +155,20 @@ def _zot_main_group_logic(ctx, profile, api_key, library_id, library_type, local
 
     # Ensure required credentials are present before trying to instantiate
     if not ctx.obj['LOCAL'] and not final_api_key:
-        click.echo("Error: API key is required when not using --local mode. Set via --api-key, ZOTERO_API_KEY, or profile.", err=True)
-        ctx.exit(1)
+        raise create_usage_error(
+            description="API key is required when not using --local mode",
+            hint="Set via --api-key, ZOTERO_API_KEY, or profile"
+        )
     if not final_library_id:
-        click.echo("Error: Library ID is required. Set via --library-id, ZOTERO_LIBRARY_ID, or profile.", err=True)
-        ctx.exit(1)
+        raise create_usage_error(
+            description="Library ID is required",
+            hint="Set via --library-id, ZOTERO_LIBRARY_ID, or profile"
+        )
     if not final_library_type:
-        click.echo("Error: Library type ('user' or 'group') is required. Set via --library-type, ZOTERO_LIBRARY_TYPE, or profile.", err=True)
-        ctx.exit(1)
+        raise create_usage_error(
+            description="Library type ('user' or 'group') is required",
+            hint="Set via --library-type, ZOTERO_LIBRARY_TYPE, or profile"
+        )
 
     try:
         # <<< START DEBUG PRINTS >>>
@@ -334,13 +340,14 @@ def current_profile_command(ctx, name):
         # Set the current profile
         profile_section_name = f"profile.{name}" if name != 'default' else 'default'
         if name != 'default' and profile_section_name not in config:
-            click.echo(f"Error: Profile '{name}' does not exist. Create it first with 'zot configure setup --profile {name}'.", err=True)
-            return
+            raise create_click_exception(
+                description=f"Profile '{name}' does not exist",
+                hint=f"Create it first with 'zot configure setup --profile {name}'"
+            )
         if name == 'default' and 'default' not in config: # Check if default section exists
             # It's okay to set 'default' as current even if the section isn't explicitly defined yet.
             # It will be created on first use or by 'zot configure setup --profile default'.
             pass
-
 
         config['zotcli']['current_profile'] = name
         save_config(config)

@@ -15,5 +15,5 @@ __pycache__/
 *.pywz
 *.pyzw
 *.egg-info/
-repomix-output.txt
+repomix-output.*
 dist/

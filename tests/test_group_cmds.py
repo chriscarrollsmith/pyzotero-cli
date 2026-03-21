@@ -19,14 +19,14 @@ def test_list_groups_default_json(runner: CliRunner, active_profile_with_real_cr
     result = runner.invoke(zot, ['groups', 'list', '--output', 'json'])
 
     assert result.exit_code == 0, f"CLI command failed: {result.output}"
-    
+
     try:
         output_data = json.loads(result.output)
     except json.JSONDecodeError:
         pytest.fail(f"Output is not valid JSON: {result.output}")
 
     assert isinstance(output_data, list), "Default JSON output should be a list of groups."
-    
+
     test_group_id = int(os.getenv('ZOTERO_TEST_GROUP_ID', "0")) # Provided group ID
     test_group_found = False
     if output_data:
