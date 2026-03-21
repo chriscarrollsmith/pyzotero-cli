@@ -1,6 +1,8 @@
+import time
 import click
 import json
 from pyzotero import zotero
+from pyzotero import zotero_errors
 from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, initialize_zotero_client
 
 @click.group(name='tags')
@@ -67,8 +69,20 @@ def delete_tags(ctx, tag_names, force):
             click.echo("Operation cancelled.")
             return
     
-    try:
-        result = zot.delete_tags(*tag_names)
-        click.echo(f"Successfully deleted tags: {', '.join(tag_names)}")
-    except Exception as e:
-        handle_zotero_exceptions_and_exit(ctx, e)
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            result = zot.delete_tags(*tag_names)
+            click.echo(f"Successfully deleted tags: {', '.join(tag_names)}")
+            return
+        except zotero_errors.PreConditionFailedError:
+            if attempt < max_retries - 1:
+                time.sleep(1)
+                continue
+            else:
+                handle_zotero_exceptions_and_exit(ctx, zotero_errors.PreConditionFailedError(
+                    "Library version conflict persisted after retries. "
+                    "Another process may be modifying the library."
+                ))
+        except Exception as e:
+            handle_zotero_exceptions_and_exit(ctx, e)
