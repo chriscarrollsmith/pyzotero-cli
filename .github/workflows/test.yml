@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 jobs:
-  unit-test:
+  build:
     strategy:
       fail-fast: false
       matrix:
@@ -25,10 +25,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies and run tests
+      - name: Install dependencies and verify package builds
         run: |
           uv sync
-          uv run pytest tests
+          uv run python -c "import pyzotero_cli; print('Import OK')"
 
   integration-test:
     runs-on: ubuntu-latest
@@ -51,4 +51,4 @@ jobs:
           ZOTERO_USERNAME: ${{ secrets.ZOTERO_USERNAME }}
         run: |
           uv sync
-          uv run pytest tests
+          uv run pytest tests -v

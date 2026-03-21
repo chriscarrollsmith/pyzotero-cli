@@ -128,7 +128,7 @@ def test_list_item_tags_json_output(temp_item_with_tags, runner: CliRunner):
     except json.JSONDecodeError:
         pytest.fail(f"Output was not valid JSON: {result.output}")
 
-def test_list_item_tags_non_existent_item(runner: CliRunner):
+def test_list_item_tags_non_existent_item(runner: CliRunner, active_profile_with_real_credentials):
     non_existent_key = f"NONEXISTENTKEY{uuid.uuid4()}" # Ensure truly non-existent
     result = runner.invoke(zot, ['tags', 'list-for-item', non_existent_key])
     assert result.exit_code == 0 # Command handles error internally and prints to stderr
@@ -228,7 +228,7 @@ def test_delete_tag_no_interaction_flag(temp_tag_in_library, zot_instance, runne
     assert "Are you sure you want to delete" not in result.output # Prompt should be skipped
     assert tag_to_delete not in zot_api_client.tags()
 
-def test_delete_non_existent_tag_force(runner: CliRunner):
+def test_delete_non_existent_tag_force(runner: CliRunner, active_profile_with_real_credentials):
     non_existent_tag = f"non-existent-tag-{uuid.uuid4()}"
     result = runner.invoke(zot, ['tags', 'delete', non_existent_tag, '--force'])
     assert result.exit_code == 0
