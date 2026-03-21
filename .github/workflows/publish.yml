@@ -35,6 +35,7 @@ jobs:
           ZOTERO_LIBRARY_ID: ${{ secrets.ZOTERO_LIBRARY_ID }}
           ZOTERO_LIBRARY_TYPE: ${{ secrets.ZOTERO_LIBRARY_TYPE }}
           ZOTERO_USERNAME: ${{ secrets.ZOTERO_USERNAME }}
+          ZOTERO_TEST_GROUP_ID: ${{ secrets.ZOTERO_TEST_GROUP_ID }}
         run: |
           uv sync
           uv run pytest tests
