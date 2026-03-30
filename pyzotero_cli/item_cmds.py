@@ -1,4 +1,5 @@
 import click
+from . import doi as doi_utils
 from .utils import (
     common_options, format_data_for_output, prepare_api_params,
     output_option, pagination_options, sorting_options, filtering_options, versioning_option,
@@ -9,6 +10,34 @@ from pyzotero.zotero_errors import PyZoteroError, HTTPError, ResourceNotFoundErr
 from pyzotero import zotero
 import json
 import os
+
+DOI_OUTPUT_HEADERS = [
+    ("DOI", "doi"),
+    ("Status", "status"),
+    ("Key", "item_key"),
+    ("Title", "title"),
+    ("Message", "message"),
+]
+AI_AGENT_TAG = "Added by AI Agent"
+
+
+def _extract_created_item_info(create_response):
+    """Extract the created item key and version from a Pyzotero create_items response."""
+    if not isinstance(create_response, dict):
+        return None, None
+
+    if isinstance(create_response.get('successful'), dict) and create_response['successful']:
+        first_success = next(iter(create_response['successful'].values()))
+        if isinstance(first_success, dict):
+            return first_success.get('key'), first_success.get('version')
+
+    if isinstance(create_response.get('success'), dict) and create_response['success']:
+        first_key = next(iter(create_response['success'].values()))
+        if isinstance(first_key, str):
+            return first_key, None
+
+    return None, None
+
 
 @click.group(name='items')
 @click.pass_context
@@ -548,6 +577,96 @@ def item_add_tags(ctx, item_key_or_id, tag_names, limit, start, since, sort, dir
         handle_zotero_exceptions_and_exit(ctx, e)
     except Exception as e:
         handle_zotero_exceptions_and_exit(ctx, e)
+
+
+@item_group.command(name="add-doi")
+@click.argument('dois', nargs=-1, required=True)
+@click.option('--collection', 'collection_key_or_id', help='Collection key or ID to add newly created items to.')
+@click.option('--check-duplicate', is_flag=True, help='Check whether the DOI already exists in the library before creating a new item.')
+@click.option(
+    '--output',
+    type=click.Choice(['json', 'yaml', 'table', 'keys']),
+    default='json',
+    show_default=True,
+    help='Output format.',
+)
+@click.pass_context
+def item_add_doi(ctx, dois, collection_key_or_id, check_duplicate, output):
+    """Create Zotero item(s) from DOI metadata."""
+    if ctx.obj.get('LOCAL', False):
+        raise click.UsageError("The 'items add-doi' command is not available with --local.")
+
+    zot_client = ctx.obj['zotero_client']
+
+    if collection_key_or_id:
+        try:
+            zot_client.collection(collection_key_or_id)
+        except Exception as e:
+            handle_zotero_exceptions_and_exit(ctx, e)
+
+    results = []
+    for raw_doi in dois:
+        result_row = {
+            "doi": raw_doi,
+            "status": "failed",
+            "item_key": None,
+            "title": "",
+            "message": "",
+        }
+        try:
+            normalized_doi = doi_utils.normalize_doi(raw_doi)
+            result_row["doi"] = normalized_doi
+
+            if check_duplicate:
+                existing_item = doi_utils.find_cached_item_by_doi(zot_client, normalized_doi)
+                if not existing_item:
+                    existing_item = doi_utils.find_existing_item_by_doi(zot_client, normalized_doi)
+                if existing_item:
+                    doi_utils.cache_item_key_for_doi(zot_client, normalized_doi, existing_item.get("key"))
+                    result_row["status"] = "exists"
+                    result_row["item_key"] = existing_item.get("key")
+                    result_row["title"] = existing_item.get("data", {}).get("title", "")
+                    result_row["message"] = "Item with DOI already exists."
+                    results.append(result_row)
+                    continue
+
+            csl_json = doi_utils.fetch_csl_json_for_doi(normalized_doi)
+            item_payload = doi_utils.map_csl_json_to_zotero_item(zot_client, csl_json, normalized_doi)
+            if collection_key_or_id:
+                item_payload["collections"] = [collection_key_or_id]
+            existing_tags = item_payload.get("tags", [])
+            if not isinstance(existing_tags, list):
+                existing_tags = []
+            if not any(isinstance(tag, dict) and tag.get("tag") == AI_AGENT_TAG for tag in existing_tags):
+                existing_tags.append({"tag": AI_AGENT_TAG})
+            item_payload["tags"] = existing_tags
+            result_row["title"] = item_payload.get("title", "")
+
+            create_response = zot_client.create_items([item_payload])
+            created_item_key, _created_item_version = _extract_created_item_info(create_response)
+            if not created_item_key:
+                raise click.ClickException(f"Failed to create item for DOI '{normalized_doi}'.")
+            doi_utils.cache_item_key_for_doi(zot_client, normalized_doi, created_item_key)
+
+            result_row["status"] = "created"
+            result_row["item_key"] = created_item_key
+            result_row["message"] = "Item created from DOI metadata."
+        except doi_utils.DOIError as e:
+            result_row["message"] = str(e)
+        except Exception as e:
+            result_row["message"] = str(e)
+        results.append(result_row)
+
+    if output == 'table':
+        click.echo(format_data_for_output(results, output, table_headers_map=DOI_OUTPUT_HEADERS))
+    elif output == 'keys':
+        click.echo(format_data_for_output(results, output, requested_fields_or_key='item_key'))
+    else:
+        click.echo(format_data_for_output(results, output))
+
+    if any(result.get("status") == "failed" for result in results):
+        ctx.exit(1)
+
 
 @item_group.command(name="bib")
 @click.option('--style', help="CSL style to use for formatting (e.g., 'apa', 'mla').")
