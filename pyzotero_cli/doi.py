@@ -43,17 +43,21 @@ class DOIError(Exception):
     """Raised when DOI input or lookup fails."""
 
 
-def normalize_doi(raw_doi: str) -> str:
-    """Return a canonical lowercase bare DOI string."""
-    normalized = parse.unquote(raw_doi or "").strip()
-    normalized = DOI_URL_PREFIX_RE.sub("", normalized).strip()
-    normalized = normalized.rstrip("/")
-    normalized = normalized.lower()
+def clean_doi(raw_doi: str) -> str:
+    """Return a bare DOI string while preserving the original case."""
+    cleaned = parse.unquote(raw_doi or "").strip()
+    cleaned = DOI_URL_PREFIX_RE.sub("", cleaned).strip()
+    cleaned = cleaned.rstrip("/")
 
-    if not normalized or not DOI_VALID_RE.match(normalized):
+    if not cleaned or not DOI_VALID_RE.match(cleaned):
         raise DOIError(f"Invalid DOI: {raw_doi}")
 
-    return normalized
+    return cleaned
+
+
+def normalize_doi(raw_doi: str) -> str:
+    """Return a canonical lowercase bare DOI string for internal matching."""
+    return clean_doi(raw_doi).lower()
 
 
 def fetch_csl_json_for_doi(doi: str, timeout: int = 10) -> dict[str, Any]:

@@ -70,6 +70,11 @@ def test_normalize_doi_accepts_common_input_forms():
     assert with_url == bare
 
 
+def test_clean_doi_preserves_input_case():
+    cleaned = doi_utils.clean_doi("https://doi.org/10.1016/J.ECONMOD.2026.107590")
+    assert cleaned == "10.1016/J.ECONMOD.2026.107590"
+
+
 def test_normalize_doi_rejects_invalid_values():
     with pytest.raises(doi_utils.DOIError):
         doi_utils.normalize_doi("not-a-doi")
