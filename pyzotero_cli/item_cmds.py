@@ -16,7 +16,7 @@ DOI_OUTPUT_HEADERS = [
     ("Status", "status"),
     ("Key", "item_key"),
     ("Title", "title"),
-    ("Message", "message"),
+    ("Error", "error"),
 ]
 AI_AGENT_TAG = "Added by AI Agent"
 
@@ -611,11 +611,11 @@ def item_add_doi(ctx, dois, collection_key_or_id, check_duplicate, output):
             "status": "failed",
             "item_key": None,
             "title": "",
-            "message": "",
         }
         try:
+            cleaned_doi = doi_utils.clean_doi(raw_doi)
             normalized_doi = doi_utils.normalize_doi(raw_doi)
-            result_row["doi"] = normalized_doi
+            result_row["doi"] = cleaned_doi
 
             if check_duplicate:
                 existing_item = doi_utils.find_cached_item_by_doi(zot_client, normalized_doi)
@@ -626,12 +626,11 @@ def item_add_doi(ctx, dois, collection_key_or_id, check_duplicate, output):
                     result_row["status"] = "exists"
                     result_row["item_key"] = existing_item.get("key")
                     result_row["title"] = existing_item.get("data", {}).get("title", "")
-                    result_row["message"] = "Item with DOI already exists."
                     results.append(result_row)
                     continue
 
-            csl_json = doi_utils.fetch_csl_json_for_doi(normalized_doi)
-            item_payload = doi_utils.map_csl_json_to_zotero_item(zot_client, csl_json, normalized_doi)
+            csl_json = doi_utils.fetch_csl_json_for_doi(cleaned_doi)
+            item_payload = doi_utils.map_csl_json_to_zotero_item(zot_client, csl_json, cleaned_doi)
             if collection_key_or_id:
                 item_payload["collections"] = [collection_key_or_id]
             existing_tags = item_payload.get("tags", [])
@@ -645,16 +644,15 @@ def item_add_doi(ctx, dois, collection_key_or_id, check_duplicate, output):
             create_response = zot_client.create_items([item_payload])
             created_item_key, _created_item_version = _extract_created_item_info(create_response)
             if not created_item_key:
-                raise click.ClickException(f"Failed to create item for DOI '{normalized_doi}'.")
+                raise click.ClickException(f"Failed to create item for DOI '{cleaned_doi}'.")
             doi_utils.cache_item_key_for_doi(zot_client, normalized_doi, created_item_key)
 
             result_row["status"] = "created"
             result_row["item_key"] = created_item_key
-            result_row["message"] = "Item created from DOI metadata."
         except doi_utils.DOIError as e:
-            result_row["message"] = str(e)
+            result_row["error"] = str(e)
         except Exception as e:
-            result_row["message"] = str(e)
+            result_row["error"] = str(e)
         results.append(result_row)
 
     if output == 'table':

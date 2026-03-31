@@ -136,10 +136,29 @@ def test_item_add_doi_creates_item(runner, monkeypatch):
             "status": "created",
             "item_key": "D0000001",
             "title": "Imported by DOI",
-            "message": "Item created from DOI metadata.",
         }
     ]
     assert fake_client.items_by_key["D0000001"]["data"]["tags"] == [{"tag": "Added by AI Agent"}]
+
+
+def test_item_add_doi_preserves_input_case_in_output_and_storage(runner, monkeypatch):
+    fake_client = FakeZoteroClient()
+    _patch_clients(monkeypatch, fake_client)
+    monkeypatch.setattr(
+        "pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi",
+        lambda doi: _sample_csl_json(title="Case Preserved"),
+    )
+
+    result = runner.invoke(
+        zot,
+        ["items", "add-doi", "https://doi.org/10.1016/J.ECONMOD.2026.107590"],
+        env=DUMMY_ENV,
+    )
+
+    assert result.exit_code == 0
+    output = json.loads(result.output)
+    assert output[0]["doi"] == "10.1016/J.ECONMOD.2026.107590"
+    assert fake_client.items_by_key["D0000001"]["data"]["DOI"] == "10.1016/J.ECONMOD.2026.107590"
 
 
 def test_item_add_doi_handles_exists_and_failure_in_batch(runner, monkeypatch):
@@ -167,12 +186,11 @@ def test_item_add_doi_handles_exists_and_failure_in_batch(runner, monkeypatch):
         "status": "exists",
         "item_key": "EXIST001",
         "title": "Already Present",
-        "message": "Item with DOI already exists.",
     }
     assert output[1]["status"] == "created"
     assert output[1]["title"] == "Fresh Item"
     assert output[2]["status"] == "failed"
-    assert output[2]["message"] == "lookup failed"
+    assert output[2]["error"] == "lookup failed"
 
 
 def test_item_add_doi_default_creates_without_duplicate_check(runner, monkeypatch):
@@ -255,4 +273,5 @@ def test_item_add_doi_keys_and_table_output(runner, monkeypatch):
     assert table_result.exit_code == 0
     assert "DOI" in table_result.output
     assert "Status" in table_result.output
+    assert "Error" in table_result.output
     assert "created" in table_result.output
