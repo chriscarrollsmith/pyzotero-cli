@@ -14,7 +14,6 @@ load_dotenv(override=True)
 
 
 # Import the main click command group
-from pyzotero_cli.zot_cli import zot
 
 @pytest.fixture(scope="function")
 def isolated_config():
@@ -54,7 +53,7 @@ def real_api_credentials():
     library_type = os.environ.get('ZOTERO_LIBRARY_TYPE', 'user') # Default to 'user'
 
     if not api_key or not library_id:
-        pytest.skip("ZOTERO_API_KEY and ZOTERO_LIBRARY_ID environment variables are required for this test.")
+        pytest.skip("ZOTERO_API_KEY and ZOTERO_LIBRARY_ID environment variables are required for this test.")  # ty:ignore[too-many-positional-arguments]
     
     return {
         "api_key": api_key,
@@ -106,7 +105,7 @@ def zot_instance(real_api_credentials):
             api_key=real_api_credentials['api_key']
         )
     except Exception as e:
-        pytest.fail(f"Failed to create Zotero instance for testing: {e}")
+        pytest.fail(f"Failed to create Zotero instance for testing: {e}")  # ty:ignore[invalid-argument-type]
 
 
 # Fixture moved from test_tag_cmds.py - uses pyzotero directly
@@ -132,7 +131,7 @@ def temp_item_with_tags(real_api_credentials):
     try:
         resp = zot_api_client.create_items([item_template])
         if not resp or 'successful' not in resp or not resp['successful']:
-            pytest.fail(f"Failed to create test item with tags: {resp}")
+            pytest.fail(f"Failed to create test item with tags: {resp}")  # ty:ignore[invalid-argument-type]
             
         # Correctly extract the actual item key and details from the 'successful' dict
         # The key '0' is just the index from the input list
@@ -177,7 +176,7 @@ def temp_parent_item(zot_instance):
     
     resp = zot_instance.create_items([template])
     if not resp['success'] or '0' not in resp['success']:
-        pytest.fail(f"Failed to create temporary parent item: {resp}")
+        pytest.fail(f"Failed to create temporary parent item: {resp}")  # ty:ignore[invalid-argument-type]
     
     item_key = resp['success']['0']
     print(f"Created temp parent item: {item_key}") # Debugging

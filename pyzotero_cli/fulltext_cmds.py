@@ -1,7 +1,5 @@
 import click
-from pyzotero import zotero # Keep for type hinting if necessary, but not for instantiation here
-import json # For parsing JSON input in 'set' command
-from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, parse_json_input, initialize_zotero_client
+from .utils import format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, parse_json_input, initialize_zotero_client
 
 @click.group("fulltext")
 @click.pass_context

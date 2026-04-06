@@ -17,7 +17,7 @@ def test_item_list_default_json_output(runner: CliRunner, active_profile_with_re
         # If the library has items:
         # assert len(data) > 0, "Should return at least one item if library is not empty and limit is applied."
     except json.JSONDecodeError:
-        pytest.fail("Output was not valid JSON.")
+        pytest.fail("Output was not valid JSON.")  # ty:ignore[invalid-argument-type]
 
 def test_item_list_top_flag(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items list --top`."""
@@ -27,7 +27,7 @@ def test_item_list_top_flag(runner: CliRunner, active_profile_with_real_credenti
         data = json.loads(result.output)
         assert isinstance(data, list)
     except json.JSONDecodeError:
-        pytest.fail("Output was not valid JSON for --top flag.")
+        pytest.fail("Output was not valid JSON for --top flag.")  # ty:ignore[invalid-argument-type]
 
 def test_item_list_output_table(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items list --output table`."""
@@ -69,7 +69,7 @@ def test_item_get_single_item(runner: CliRunner, temp_item_with_tags, active_pro
         # So, if 'results' is a dict, format_data_for_output handles it.
         assert data['key'] == item_key, "Returned item key should match the requested key."
     except json.JSONDecodeError:
-        pytest.fail("Output was not valid JSON for item get.")
+        pytest.fail("Output was not valid JSON for item get.")  # ty:ignore[invalid-argument-type]
 
 def test_item_get_non_existent_item(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items get <item_key>` for a non-existent item."""
@@ -113,7 +113,7 @@ def test_item_create_and_delete(runner: CliRunner, zot_instance, active_profile_
         created_item_key = create_data['success']['0']
         assert created_item_key is not None
     except (json.JSONDecodeError, KeyError, AssertionError) as e:
-        pytest.fail(f"Failed to parse create item response or find key: {e}\nOutput: {create_result.output}")
+        pytest.fail(f"Failed to parse create item response or find key: {e}\nOutput: {create_result.output}")  # ty:ignore[invalid-argument-type]
 
     # Verify item exists using zot_instance (direct API call)
     try:
@@ -137,7 +137,7 @@ def test_item_create_and_delete(runner: CliRunner, zot_instance, active_profile_
                         zot_instance.delete_item(item_to_delete)
             except Exception:
                 pass # Ignore cleanup error if primary assertion fails
-        pytest.fail(f"Failed to verify created item {created_item_key} via API: {e}")
+        pytest.fail(f"Failed to verify created item {created_item_key} via API: {e}")  # ty:ignore[invalid-argument-type]
 
     # Delete item
     delete_result = runner.invoke(zot, ['items', 'delete', created_item_key, '--force'])
@@ -149,7 +149,7 @@ def test_item_create_and_delete(runner: CliRunner, zot_instance, active_profile_
         assert len(delete_data) == 1
         assert delete_data[0].get(created_item_key) == "Successfully deleted"
     except (json.JSONDecodeError, IndexError, KeyError, AssertionError) as e:
-        pytest.fail(f"Failed to parse delete response or verify success: {e}\nOutput: {delete_result.output}")
+        pytest.fail(f"Failed to parse delete response or verify success: {e}\nOutput: {delete_result.output}")  # ty:ignore[invalid-argument-type]
 
     # Verify item is deleted using zot_instance
     try:
@@ -165,7 +165,7 @@ def test_item_create_and_delete(runner: CliRunner, zot_instance, active_profile_
         if "404" in str(e) and "Item does not exist" in str(e):
             pass  # This is expected behavior
         else:
-            pytest.fail(f"Error when checking if item {created_item_key} was deleted: {e}")
+            pytest.fail(f"Error when checking if item {created_item_key} was deleted: {e}")  # ty:ignore[invalid-argument-type]
 
 
 # Test for `zot items add-tags`
@@ -203,8 +203,9 @@ def test_item_add_tags(runner: CliRunner, zot_instance, active_profile_with_real
         # Cleanup before failing
         try:
             zot_instance.delete_item({'key': item_key, 'version': item_version}) # Initial version
-        except Exception: pass
-        pytest.fail(f"Failed to parse add-tags response or verify success: {e}\nOutput: {add_tags_result.output}")
+        except Exception:
+            pass
+        pytest.fail(f"Failed to parse add-tags response or verify success: {e}\nOutput: {add_tags_result.output}")  # ty:ignore[invalid-argument-type]
 
     # 3. Verify tags were added using zot_instance
     try:
@@ -258,8 +259,9 @@ def test_item_add_tags(runner: CliRunner, zot_instance, active_profile_with_real
         # Cleanup before failing
         try:
             zot_instance.delete_item({'key': item_key, 'version': item_version}) # Use potentially updated version
-        except Exception: pass
-        pytest.fail(f"Failed to verify tags on item {item_key} via API: {e}")
+        except Exception:
+            pass
+        pytest.fail(f"Failed to verify tags on item {item_key} via API: {e}")  # ty:ignore[invalid-argument-type]
     finally:
         # 4. Cleanup: Delete the item
         try:
@@ -307,10 +309,11 @@ def test_item_update_field(runner: CliRunner, zot_instance, active_profile_with_
         assert check_item_after_cli, f"Item {item_key} not found via API immediately after CLI 'update --field' reported success."
 
     except (json.JSONDecodeError, AssertionError) as e:
-        try: # Cleanup attempt
+        try:  # Cleanup attempt
             zot_instance.delete_item({'key': item_key, 'version': original_version})
-        except Exception: pass
-        pytest.fail(f"Failed to parse update response or verify success: {e}\nOutput: {update_result.output}")
+        except Exception:
+            pass
+        pytest.fail(f"Failed to parse update response or verify success: {e}\nOutput: {update_result.output}")  # ty:ignore[invalid-argument-type]
 
     # 3. Verify update using zot_instance
     updated_item_details = None
@@ -328,7 +331,7 @@ def test_item_update_field(runner: CliRunner, zot_instance, active_profile_with_
         assert updated_item_data['version'] > original_version, "Version should have incremented"
         updated_item_details = updated_item_data # For cleanup
     except Exception as e:
-        pytest.fail(f"Failed to verify updated item {item_key} via API: {e}")
+        pytest.fail(f"Failed to verify updated item {item_key} via API: {e}")  # ty:ignore[invalid-argument-type]
     finally:
         # 4. Cleanup
         if updated_item_details: # Use the latest fetched item for deletion
@@ -384,9 +387,11 @@ def test_item_update_from_json_string(runner: CliRunner, zot_instance, active_pr
         assert check_item_after_cli, f"Item {item_key} not found via API immediately after CLI 'update --from-json' reported success."
 
     except (json.JSONDecodeError, AssertionError) as e:
-        try: zot_instance.delete_item({'key': item_key, 'version': original_version}); 
-        except Exception: pass
-        pytest.fail(f"Update from JSON string failed parsing: {e}")
+        try:
+            zot_instance.delete_item({'key': item_key, 'version': original_version})
+        except Exception:
+            pass
+        pytest.fail(f"Update from JSON string failed parsing: {e}")  # ty:ignore[invalid-argument-type]
 
     # 3. Verify update
     updated_item_details = None
@@ -405,22 +410,24 @@ def test_item_update_from_json_string(runner: CliRunner, zot_instance, active_pr
         assert updated_item_data['version'] > original_version
         updated_item_details = updated_item_data # For cleanup
     except Exception as e:
-        pytest.fail(f"Failed to verify JSON update for item {item_key}: {e}")
+        pytest.fail(f"Failed to verify JSON update for item {item_key}: {e}")  # ty:ignore[invalid-argument-type]
     finally:
         # 4. Cleanup
         if updated_item_details:
             zot_instance.delete_item(updated_item_details)
         elif item_key:
-            try: zot_instance.delete_item({'key': item_key, 'version': original_version}); 
-            except Exception: 
-                try: 
+            try:
+                zot_instance.delete_item({'key': item_key, 'version': original_version})
+            except Exception:
+                try:
                     item_to_delete = zot_instance.item(item_key)
                     if item_to_delete:
                         if isinstance(item_to_delete, list):
                             zot_instance.delete_item(item_to_delete[0])
                         else:
                             zot_instance.delete_item(item_to_delete)
-                except Exception: pass
+                except Exception:
+                    pass
 
 # Test for `items children`
 def test_item_children(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
@@ -457,7 +464,7 @@ def test_item_children(runner: CliRunner, zot_instance, active_profile_with_real
                 break
         assert child_found_in_output, f"Child item {child_item_key} not found in children list of {parent_item_key}"
     except (json.JSONDecodeError, AssertionError) as e:
-        pytest.fail(f"Failed to parse children response or find child: {e}\nOutput: {children_result.output}")
+        pytest.fail(f"Failed to parse children response or find child: {e}\nOutput: {children_result.output}")  # ty:ignore[invalid-argument-type]
     finally:
         # 4. Cleanup (delete child first, then parent)
         try:
@@ -488,7 +495,7 @@ def test_item_count(runner: CliRunner, active_profile_with_real_credentials):
         count_str = result.output.split(":")[1].strip()
         assert int(count_str) >= 0 # Count should be a non-negative integer
     except (IndexError, ValueError) as e:
-        pytest.fail(f"Could not parse item count from output: {result.output}\nError: {e}")
+        pytest.fail(f"Could not parse item count from output: {result.output}\nError: {e}")  # ty:ignore[invalid-argument-type]
 
 # Tests for `items bib` and `items citation`
 def test_item_bib_and_citation(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
@@ -540,7 +547,7 @@ def test_item_get_with_bibtex_format(runner: CliRunner, temp_item_with_tags, act
     # Should not be JSON
     try:
         json.loads(result.output)
-        pytest.fail("Output should not be valid JSON, but BibTeX format")
+        pytest.fail("Output should not be valid JSON, but BibTeX format")  # ty:ignore[invalid-argument-type]
     except json.JSONDecodeError:
         # Expected - output should not be valid JSON
         pass
@@ -566,9 +573,9 @@ def test_item_get_with_csljson_format(runner: CliRunner, temp_item_with_tags, ac
         # Check for at least one expected CSL-JSON key
         assert any(key in first_item for key in csl_keys), f"CSL-JSON should have some of these keys: {csl_keys}"
     except json.JSONDecodeError:
-        pytest.fail("CSL-JSON output should be valid JSON")
+        pytest.fail("CSL-JSON output should be valid JSON")  # ty:ignore[invalid-argument-type]
     except KeyError as e:
-        pytest.fail(f"Error accessing CSL-JSON data: {e}")
+        pytest.fail(f"Error accessing CSL-JSON data: {e}")  # ty:ignore[invalid-argument-type]
 
 def test_item_get_with_bib_format_and_style(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test `zot items get <item_key> --output bib --style <style>`."""

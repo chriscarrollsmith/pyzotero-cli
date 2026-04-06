@@ -1,9 +1,7 @@
 import time
 import click
-import json
-from pyzotero import zotero
 from pyzotero import zotero_errors
-from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, initialize_zotero_client
+from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, initialize_zotero_client
 
 @click.group(name='tags')
 @click.pass_context
@@ -72,7 +70,7 @@ def delete_tags(ctx, tag_names, force):
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            result = zot.delete_tags(*tag_names)
+            zot.delete_tags(*tag_names)
             click.echo(f"Successfully deleted tags: {', '.join(tag_names)}")
             return
         except zotero_errors.PreConditionFailedError:

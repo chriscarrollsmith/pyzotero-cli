@@ -1,6 +1,4 @@
 import click
-import json
-from pyzotero import zotero
 from .utils import common_options, format_data_for_output, handle_zotero_exceptions_and_exit, create_click_exception, create_usage_error, parse_json_input, initialize_zotero_client
 
 @click.group('search')

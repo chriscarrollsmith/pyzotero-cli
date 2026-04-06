@@ -9,7 +9,6 @@ import os # For ZOTERO_USERNAME if used in assertions
 
 def test_util_key_info(active_profile_with_real_credentials, real_api_credentials, runner: CliRunner):
     """Test the 'zot util key-info' command."""
-    profile_name = active_profile_with_real_credentials # Ensures profile is set up
 
     # Test with default output (JSON)
     result_json = runner.invoke(zot, ['util', 'key-info'])
@@ -28,7 +27,7 @@ def test_util_key_info(active_profile_with_real_credentials, real_api_credential
         assert '"key"' in result_json.output
         assert '"userID"' in result_json.output
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result_json.output}")
+        pytest.fail(f"Output was not valid JSON: {result_json.output}")  # ty:ignore[invalid-argument-type]
 
     # Test with table output
     result_table = runner.invoke(zot, ['util', 'key-info', '--output', 'table'])
@@ -47,7 +46,6 @@ def test_util_key_info(active_profile_with_real_credentials, real_api_credential
 
 def test_util_last_modified_version(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util last-modified-version' command."""
-    profile_name = active_profile_with_real_credentials # Ensures profile is set up
 
     result = runner.invoke(zot, ['util', 'last-modified-version'])
     print(f"last-modified-version output: {result.output}")
@@ -60,7 +58,6 @@ def test_util_last_modified_version(active_profile_with_real_credentials, runner
 
 def test_util_item_types(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-types' command."""
-    profile_name = active_profile_with_real_credentials # Ensures profile is set up
 
     # Test with default output (JSON)
     result_json = runner.invoke(zot, ['util', 'item-types'])
@@ -82,7 +79,7 @@ def test_util_item_types(active_profile_with_real_credentials, runner: CliRunner
         assert '"itemType"' in result_json.output
         assert '"localized"' in result_json.output
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result_json.output}")
+        pytest.fail(f"Output was not valid JSON: {result_json.output}")  # ty:ignore[invalid-argument-type]
 
     # Test with table output
     result_table = runner.invoke(zot, ['util', 'item-types', '--output', 'table'])
@@ -95,7 +92,6 @@ def test_util_item_types(active_profile_with_real_credentials, runner: CliRunner
 
 def test_util_item_fields(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-fields' command."""
-    profile_name = active_profile_with_real_credentials # Ensures profile is set up
 
     # Test with default output (JSON)
     result_json = runner.invoke(zot, ['util', 'item-fields'])
@@ -115,7 +111,7 @@ def test_util_item_fields(active_profile_with_real_credentials, runner: CliRunne
         assert '"field"' in result_json.output
         assert '"localized"' in result_json.output
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result_json.output}")
+        pytest.fail(f"Output was not valid JSON: {result_json.output}")  # ty:ignore[invalid-argument-type]
 
     # Test with table output
     result_table = runner.invoke(zot, ['util', 'item-fields', '--output', 'table'])
@@ -128,7 +124,6 @@ def test_util_item_fields(active_profile_with_real_credentials, runner: CliRunne
 
 def test_util_item_type_fields(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-type-fields' command."""
-    profile_name = active_profile_with_real_credentials # Ensures profile is set up
     item_type_to_test = "book"
 
     # Test with default output (JSON)
@@ -150,7 +145,7 @@ def test_util_item_type_fields(active_profile_with_real_credentials, runner: Cli
         assert '"field"' in result_json.output
         assert '"localized"' in result_json.output
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON for {item_type_to_test}: {result_json.output}")
+        pytest.fail(f"Output was not valid JSON for {item_type_to_test}: {result_json.output}")  # ty:ignore[invalid-argument-type]
 
     # Test with table output
     result_table = runner.invoke(zot, ['util', 'item-type-fields', item_type_to_test, '--output', 'table'])
@@ -174,7 +169,6 @@ def test_util_item_type_fields(active_profile_with_real_credentials, runner: Cli
 
 def test_util_item_template(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-template' command."""
-    profile_name = active_profile_with_real_credentials # Ensures profile is set up
     item_type_to_test = "book"
 
     # Test with a common item type (default output is JSON)
@@ -191,7 +185,7 @@ def test_util_item_template(active_profile_with_real_credentials, runner: CliRun
         assert 'tags' in data
         assert isinstance(data['tags'], list)
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON for item template {item_type_to_test}: {result_json_default.output}")
+        pytest.fail(f"Output was not valid JSON for item template {item_type_to_test}: {result_json_default.output}")  # ty:ignore[invalid-argument-type]
 
     # Test with --output json explicitly (should be the same)
     result_json_explicit = runner.invoke(zot, ['util', 'item-template', item_type_to_test, '--output', 'json'])
@@ -215,7 +209,7 @@ def test_util_item_template(active_profile_with_real_credentials, runner: CliRun
         # If we were testing 'attachment' item type, linkMode would be more directly visible.
         assert 'title' in data_link # Ensure basic template structure is still there
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON for item template {item_type_to_test} with linkmode: {result_linkmode.output}")
+        pytest.fail(f"Output was not valid JSON for item template {item_type_to_test} with linkmode: {result_linkmode.output}")  # ty:ignore[invalid-argument-type]
 
     # Test with a non-existent item type
     non_existent_item_type = "notAnItemType"

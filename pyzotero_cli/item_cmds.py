@@ -7,7 +7,6 @@ from .utils import (
     create_click_exception, check_batch_operation_results, initialize_zotero_client
 )
 from pyzotero.zotero_errors import PyZoteroError, HTTPError, ResourceNotFoundError, PreConditionFailedError
-from pyzotero import zotero
 import json
 import os
 
@@ -66,20 +65,6 @@ def item_list(ctx, top, publications, trash, deleted, limit, start, since, sort,
         raise click.UsageError('Only one of --top, --publications, --trash, or --deleted can be specified.')
 
     zot_client = ctx.obj['zotero_client']
-    
-    # Determine which API method is being used to filter the allowed parameters
-    api_method = 'items'  # Default
-    if top:
-        api_method = 'top'
-    elif publications:
-        api_method = 'publications'
-    elif trash:
-        api_method = 'trash'
-    elif deleted:
-        api_method = 'deleted'
-    
-    # Get allowed parameters for this method
-    allowed_params = ['limit', 'start', 'since', 'sort', 'direction', 'q', 'qmode', 'tag', 'itemType']
     
     api_params = prepare_api_params(
         limit=limit, start=start, since=since, sort=sort, direction=direction,

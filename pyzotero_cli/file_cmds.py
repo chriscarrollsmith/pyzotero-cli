@@ -1,7 +1,7 @@
 import click
 import os
 import json
-from pyzotero import zotero
+from typing import Any, cast
 from .utils import handle_zotero_exceptions_and_exit, create_click_exception, initialize_zotero_client
 
 @click.group(name='file')
@@ -124,7 +124,7 @@ def upload_batch_files(ctx, json_manifest_path):
             manifest = json.load(f)
     except Exception as e:
         raise create_click_exception(
-            description=f"Failed to read or parse JSON manifest file",
+            description="Failed to read or parse JSON manifest file",
             context=f"File: {json_manifest_path}",
             details=str(e)
         )
@@ -144,10 +144,11 @@ def upload_batch_files(ctx, json_manifest_path):
             click.echo(f"Warning: Manifest entry at index {index} is not an object, skipping.", err=True)
             continue
 
-        local_path = entry.get('local_path')
-        zotero_filename = entry.get('zotero_filename')
-        parent_item_id = entry.get('parent_item_id')
-        existing_attachment_key = entry.get('existing_attachment_key')
+        entry_data = cast(dict[str, Any], entry)
+        local_path = entry_data.get('local_path')
+        zotero_filename = entry_data.get('zotero_filename')
+        parent_item_id = entry_data.get('parent_item_id')
+        existing_attachment_key = entry_data.get('existing_attachment_key')
 
         if not local_path or not os.path.exists(local_path):
             click.echo(f"Warning: Invalid or missing 'local_path' for entry at index {index}: '{local_path}'. Skipping.", err=True)
