@@ -31,6 +31,22 @@ def cleanup_doi_items(zot_instance):
 
 
 @pytest.fixture(scope="function")
+def ensure_stable_doi_absent(zot_instance):
+    """Delete any pre-existing STABLE_DOI items so duplicate-check tests start clean."""
+    def _purge():
+        items = zot_instance.items(q=STABLE_DOI, qmode="everything", limit=50)
+        for item in items:
+            if item.get("data", {}).get("DOI", "").lower() == STABLE_DOI.lower():
+                try:
+                    zot_instance.delete_item(item)
+                except Exception:
+                    pass
+    _purge()
+    yield
+    _purge()
+
+
+@pytest.fixture(scope="function")
 def pre_existing_doi_item(zot_instance):
     """
     Creates a Zotero item with EXISTING_DOI directly via the API to simulate
@@ -108,6 +124,7 @@ def test_item_add_doi_handles_exists_and_failure_in_batch(
     active_profile_with_real_credentials,
     zot_instance,
     cleanup_doi_items,
+    ensure_stable_doi_absent,
     pre_existing_doi_item,
 ):
     result = runner.invoke(
