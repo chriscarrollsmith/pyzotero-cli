@@ -27,8 +27,11 @@ def list_groups(ctx, limit, start, since, sort, direction, output, query, qmode,
         zot_client = ctx.obj.get('ZOTERO_CLIENT')
         if not zot_client:
             click.echo("Error: Zotero client not initialized. Please check configuration.", err=True)
-            if ctx: ctx.exit(1)
-            else: import sys; sys.exit(1)
+            if ctx:
+                ctx.exit(1)
+            else:
+                import sys  # noqa: E402
+                sys.exit(1)
 
         # Parameters directly supported by zot_client.groups()
         # PyZotero's groups() method primarily accepts: limit, start, sort, direction.
@@ -46,11 +49,16 @@ def list_groups(ctx, limit, start, since, sort, direction, output, query, qmode,
         }.items() if v is not None}
         
         # Acknowledge unused common options for this specific command if they were provided
-        if query: click.echo("Warning: --query is not used by 'groups list'.", err=True)
-        if qmode: click.echo("Warning: --qmode is not used by 'groups list'.", err=True)
-        if filter_tags: click.echo("Warning: --filter-tag is not used by 'groups list'.", err=True)
-        if filter_item_type: click.echo("Warning: --filter-item-type is not used by 'groups list'.", err=True)
-        if since: click.echo("Warning: --since is not used by 'groups list'.", err=True)
+        if query:
+            click.echo("Warning: --query is not used by 'groups list'.", err=True)
+        if qmode:
+            click.echo("Warning: --qmode is not used by 'groups list'.", err=True)
+        if filter_tags:
+            click.echo("Warning: --filter-tag is not used by 'groups list'.", err=True)
+        if filter_item_type:
+            click.echo("Warning: --filter-item-type is not used by 'groups list'.", err=True)
+        if since:
+            click.echo("Warning: --since is not used by 'groups list'.", err=True)
 
         groups_data = zot_client.groups(**params)
         

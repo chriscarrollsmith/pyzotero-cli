@@ -3,7 +3,6 @@ from pyzotero_cli.zot_cli import zot, CONFIG_FILE
 import configparser
 import json
 from click.testing import CliRunner
-from importlib.metadata import version
 import os
 from unittest.mock import patch
 
@@ -44,12 +43,12 @@ def test_configure_setup_new_profile(isolated_config, monkeypatch, runner: CliRu
     # Verify config file content
     config = configparser.ConfigParser()
     config.read(CONFIG_FILE)
-    assert f"profile.testprofile" in config
-    assert config[f"profile.testprofile"]['library_id'] == 'test_library_id'
-    assert config[f"profile.testprofile"]['library_type'] == 'user'
-    assert config[f"profile.testprofile"]['api_key'] == 'test_api_key'
-    assert config[f"profile.testprofile"]['local_zotero'] == 'False'
-    assert config[f"profile.testprofile"]['locale'] == 'en-GB'
+    assert "profile.testprofile" in config
+    assert config["profile.testprofile"]['library_id'] == 'test_library_id'
+    assert config["profile.testprofile"]['library_type'] == 'user'
+    assert config["profile.testprofile"]['api_key'] == 'test_api_key'
+    assert config["profile.testprofile"]['local_zotero'] == 'False'
+    assert config["profile.testprofile"]['locale'] == 'en-GB'
     assert config['zotcli']['current_profile'] == 'testprofile'
 
 def test_configure_setup_default_profile(isolated_config, monkeypatch, runner: CliRunner):
@@ -258,7 +257,7 @@ def test_list_items_real_api(isolated_config, real_api_credentials, runner: CliR
             # The library ID in the response should match the one from our environment variables.
             assert str(output_data[0]['library']['id']) == real_api_credentials['library_id']
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result.output}")
+        pytest.fail(f"Output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
 
 def test_list_items_with_active_profile(active_profile_with_real_credentials, real_api_credentials, runner: CliRunner):
     """
@@ -300,7 +299,7 @@ def test_list_items_with_active_profile(active_profile_with_real_credentials, re
             assert str(item['library']['id']) == real_api_credentials['library_id']
             assert item['library']['type'] == real_api_credentials['library_type']
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result.output}")
+        pytest.fail(f"Output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
 
 def test_zot_version(runner: CliRunner):
     """Test that 'zot --version' prints the version number and exits."""

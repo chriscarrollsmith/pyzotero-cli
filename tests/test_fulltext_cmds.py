@@ -2,20 +2,17 @@ import pytest
 import json
 import os
 import tempfile
-from click.testing import CliRunner
 from pyzotero import zotero
-from unittest.mock import patch
 
 # Import the main CLI entry point and utility functions/exceptions
 from pyzotero_cli.zot_cli import zot
-from pyzotero_cli.utils import handle_zotero_exceptions_and_exit # For potential direct use if needed
 from pyzotero import zotero_errors
 
 # Helper function to get a real Zotero instance for fixture setup/teardown
 def get_real_zotero_instance(credentials):
     """Creates a Pyzotero instance from credentials dict."""
     if not all(k in credentials for k in ['library_id', 'library_type', 'api_key']):
-        pytest.skip("Real API credentials not fully configured for fixture setup.")
+        pytest.skip("Real API credentials not fully configured for fixture setup.")  # ty:ignore[too-many-positional-arguments]
     try:
         return zotero.Zotero(
             library_id=credentials['library_id'],
@@ -23,7 +20,7 @@ def get_real_zotero_instance(credentials):
             api_key=credentials['api_key']
         )
     except Exception as e:
-        pytest.fail(f"Failed to create Zotero instance for fixture: {e}")
+        pytest.fail(f"Failed to create Zotero instance for fixture: {e}")  # ty:ignore[invalid-argument-type]
 
 
 @pytest.fixture(scope="function")
@@ -48,11 +45,11 @@ def temp_attachment_item_key(real_api_credentials, temp_parent_item):
 
         attachment_resp = zot_instance.create_items([attachment_template])
         if not attachment_resp.get('successful') or not list(attachment_resp['successful'].values()):
-            pytest.fail(f"Failed to create attachment item for test: {attachment_resp}")
+            pytest.fail(f"Failed to create attachment item for test: {attachment_resp}")  # ty:ignore[invalid-argument-type]
 
         created_item_data = list(attachment_resp['successful'].values())[0]
         if not isinstance(created_item_data, dict) or 'key' not in created_item_data:
-            pytest.fail(f"Unexpected structure for created item data: {created_item_data}")
+            pytest.fail(f"Unexpected structure for created item data: {created_item_data}")  # ty:ignore[invalid-argument-type]
         attachment_key = created_item_data['key']
         attachment_created = True
         print(f"Created temp attachment item: {attachment_key} linked to parent: {parent_key}") # Debugging
@@ -114,7 +111,7 @@ def test_fulltext_set_and_get_pdf_style(runner, active_profile_with_real_credent
     try:
         output_data = json.loads(get_result_json.output)
     except json.JSONDecodeError:
-        pytest.fail(f"Default output was not valid JSON: {get_result_json.output}")
+        pytest.fail(f"Default output was not valid JSON: {get_result_json.output}")  # ty:ignore[invalid-argument-type]
 
     assert output_data.get("content") == test_content
     assert output_data.get("indexedPages") == 10
@@ -169,7 +166,7 @@ def test_fulltext_set_and_get_text_style(runner, active_profile_with_real_creden
     try:
         output_data = json.loads(get_result_json.output)
     except json.JSONDecodeError:
-        pytest.fail(f"Default output was not valid JSON: {get_result_json.output}")
+        pytest.fail(f"Default output was not valid JSON: {get_result_json.output}")  # ty:ignore[invalid-argument-type]
 
     assert output_data.get("content") == test_content
     assert output_data.get("indexedChars") == len(test_content)
@@ -337,15 +334,15 @@ def test_fulltext_get_item_not_attachment_or_no_fulltext(runner, active_profile_
         '--profile', profile_name, 'items', 'list', '--limit', '1', '--output', 'json'
     ], catch_exceptions=False)
     if list_result.exit_code != 0 or not list_result.output.strip():
-            pytest.skip("Could not retrieve an item key for testing get on non-attachment.")
+            pytest.skip("Could not retrieve an item key for testing get on non-attachment.")  # ty:ignore[too-many-positional-arguments]
 
     try:
         items = json.loads(list_result.output)
         if not items:
-                pytest.skip("Library seems empty, cannot get a non-attachment item key.")
+                pytest.skip("Library seems empty, cannot get a non-attachment item key.")  # ty:ignore[too-many-positional-arguments]
         item_key = items[0]['key'] # Assuming the first item isn't a fulltext attachment
     except (json.JSONDecodeError, IndexError, KeyError):
-        pytest.skip("Could not parse item list to get a key for testing.")
+        pytest.skip("Could not parse item list to get a key for testing.")  # ty:ignore[too-many-positional-arguments]
 
 
     get_result = runner.invoke(zot, [

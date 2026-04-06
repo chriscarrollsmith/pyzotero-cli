@@ -2,7 +2,6 @@ import click
 import os
 import configparser
 from importlib.metadata import version
-from pyzotero_cli.utils import common_options # Import common_options
 from pyzotero import zotero as pyzotero_client # Import the client class
 from pyzotero import zotero_errors # Import exceptions
 from .utils import handle_zotero_exceptions_and_exit, create_click_exception, create_usage_error # Import error handler
@@ -194,14 +193,14 @@ def _zot_main_group_logic(ctx, profile, api_key, library_id, library_type, local
 
 zot = _zot_main_group_logic
 
-from pyzotero_cli.item_cmds import item_group # Import the item command group
-from pyzotero_cli.collection_cmds import collection_group # Import the collection command group
-from pyzotero_cli.tag_cmds import tag_group # Import the tag command group
-from pyzotero_cli.file_cmds import file_group # Import the file command group
-from pyzotero_cli.search_cmds import search_group # Import the search command group
-from pyzotero_cli.fulltext_cmds import fulltext_group # Import the fulltext command group
-from pyzotero_cli.group_cmds import group_group # Import the group command group
-from pyzotero_cli.util_cmds import util_group # Import the utility command group
+from pyzotero_cli.item_cmds import item_group  # noqa: E402
+from pyzotero_cli.collection_cmds import collection_group  # noqa: E402
+from pyzotero_cli.tag_cmds import tag_group  # noqa: E402
+from pyzotero_cli.file_cmds import file_group  # noqa: E402
+from pyzotero_cli.search_cmds import search_group  # noqa: E402
+from pyzotero_cli.fulltext_cmds import fulltext_group  # noqa: E402
+from pyzotero_cli.group_cmds import group_group  # noqa: E402
+from pyzotero_cli.util_cmds import util_group  # noqa: E402
 
 # Add command groups to the main zot application
 zot.add_command(item_group, name='items')
@@ -314,7 +313,7 @@ def list_profiles_command():
 
     for p_name in profiles:
         if p_name.endswith(' (implicit)') and current_profile == 'default' and 'default' not in config.sections():
-             click.echo(f"* default (active, not explicitly configured)")
+             click.echo("* default (active, not explicitly configured)")
         elif p_name.endswith(' (actual section)') and p_name.startswith(current_profile):
             click.echo(f"* {current_profile} (active)")
         elif p_name == current_profile:

@@ -23,7 +23,7 @@ def test_list_groups_default_json(runner: CliRunner, active_profile_with_real_cr
     try:
         output_data = json.loads(result.output)
     except json.JSONDecodeError:
-        pytest.fail(f"Output is not valid JSON: {result.output}")
+        pytest.fail(f"Output is not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
 
     assert isinstance(output_data, list), "Default JSON output should be a list of groups."
 
@@ -65,7 +65,7 @@ def test_list_groups_keys_output(runner: CliRunner, active_profile_with_real_cre
         assert all(key.isdigit() for key in keys), f"Output contains non-digit keys: {result.output}"
         assert test_group_id_str in keys, f"Expected group ID {test_group_id_str} not found in keys output."
     else:
-        pytest.fail(f"Expected group ID {test_group_id_str} in keys output, but got empty output.")
+        pytest.fail(f"Expected group ID {test_group_id_str} in keys output, but got empty output.")  # ty:ignore[invalid-argument-type]
 
 # Test function for the --output table option
 # This test focuses on the "no groups" message OR actual table output.
@@ -105,9 +105,9 @@ def test_list_groups_table_output(runner: CliRunner, active_profile_with_real_cr
             #     assert any(test_group_id_str in line for line in output_lines), \
             #            f"Test group ID {test_group_id_str} not found in table output."
         else:
-            pytest.fail(f"Table output has too few lines to contain headers. Output: {result.output}")
+            pytest.fail(f"Table output has too few lines to contain headers. Output: {result.output}")  # ty:ignore[invalid-argument-type]
     else:
-        pytest.fail(f"Unexpected table output. Expected table or '{no_groups_message}', got: {result.output}")
+        pytest.fail(f"Unexpected table output. Expected table or '{no_groups_message}', got: {result.output}")  # ty:ignore[invalid-argument-type]
 
 
 # Test function for the --limit option
@@ -123,7 +123,7 @@ def test_list_groups_limit(runner: CliRunner, active_profile_with_real_credentia
     try:
         output_data = json.loads(result.output)
     except json.JSONDecodeError:
-        pytest.fail(f"Output is not valid JSON: {result.output}")
+        pytest.fail(f"Output is not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
 
     assert isinstance(output_data, list), "JSON output with limit should still be a list."
     assert len(output_data) <= 1, "Output list should contain at most 1 group when --limit=1."
@@ -144,7 +144,7 @@ def test_list_groups_sort_name_asc(runner: CliRunner, active_profile_with_real_c
     try:
         output_data = json.loads(result.output)
     except json.JSONDecodeError:
-        pytest.fail(f"Output is not valid JSON: {result.output}")
+        pytest.fail(f"Output is not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
 
     assert isinstance(output_data, list), "JSON output should be a list."
     

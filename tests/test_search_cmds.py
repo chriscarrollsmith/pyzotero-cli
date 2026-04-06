@@ -50,7 +50,6 @@ def temp_saved_search(real_api_credentials, request):
 def test_list_searches_success_table(runner: CliRunner, active_profile_with_real_credentials, temp_saved_search):
     """Test successful listing of saved searches in table format (explicitly specified)."""
     # temp_saved_search ensures there's at least one search to list
-    profile_name = active_profile_with_real_credentials # Ensure profile is active
 
     result = runner.invoke(
         cli_entry_point,
@@ -63,7 +62,6 @@ def test_list_searches_success_table(runner: CliRunner, active_profile_with_real
 
 def test_list_searches_success_json(runner: CliRunner, active_profile_with_real_credentials, temp_saved_search):
     """Test successful listing of saved searches in JSON format (default)."""
-    profile_name = active_profile_with_real_credentials
     
     result = runner.invoke(
         cli_entry_point,
@@ -93,7 +91,6 @@ def test_list_searches_success_json(runner: CliRunner, active_profile_with_real_
 
 def test_create_search_success_json_string(runner: CliRunner, active_profile_with_real_credentials, real_api_credentials, request):
     """Test successful creation of a saved search using a JSON string with default JSON output."""
-    profile_name = active_profile_with_real_credentials
     search_name = f"zotcli_test_create_str_{uuid.uuid4()}"
     conditions_list = [{"condition": "tag", "operator": "is", "value": f"test_tag_{uuid.uuid4()}"}]
     conditions_json = json.dumps(conditions_list)
@@ -143,7 +140,6 @@ def test_create_search_success_json_string(runner: CliRunner, active_profile_wit
 
 def test_create_search_success_table_output(runner: CliRunner, active_profile_with_real_credentials, real_api_credentials, request):
     """Test successful creation of a saved search with explicit table output format."""
-    profile_name = active_profile_with_real_credentials
     search_name = f"zotcli_test_create_table_{uuid.uuid4()}"
     conditions_list = [{"condition": "title", "operator": "contains", "value": f"test_{uuid.uuid4()}"}]
     conditions_json = json.dumps(conditions_list)
@@ -179,7 +175,6 @@ def test_create_search_success_table_output(runner: CliRunner, active_profile_wi
 
 def test_create_search_success_json_file(runner: CliRunner, active_profile_with_real_credentials, real_api_credentials, tmp_path, request):
     """Test successful creation of a saved search using a JSON file with default JSON output."""
-    profile_name = active_profile_with_real_credentials
     search_name = f"zotcli_test_create_file_{uuid.uuid4()}"
     conditions_list = [{"condition": "dateAdded", "operator": "is", "value": "today"}]
     conditions_json = json.dumps(conditions_list)
@@ -233,7 +228,6 @@ def test_create_search_success_json_file(runner: CliRunner, active_profile_with_
 
 def test_create_search_invalid_json_input(runner: CliRunner, active_profile_with_real_credentials):
     """Test create search with invalid JSON input (not file or string)."""
-    profile_name = active_profile_with_real_credentials
     result = runner.invoke(cli_entry_point, [
         'search', 'create', '--name', 'Bad Search', '--conditions-json', 'not_a_file_or_json'
     ]) # Catch exceptions is False by default, CLI handles it
@@ -243,7 +237,6 @@ def test_create_search_invalid_json_input(runner: CliRunner, active_profile_with
 
 def test_create_search_malformed_json_string(runner: CliRunner, active_profile_with_real_credentials):
     """Test create search with malformed JSON string."""
-    profile_name = active_profile_with_real_credentials
     result = runner.invoke(cli_entry_point, [
         'search', 'create', '--name', 'Malformed', '--conditions-json', '{"key": "value", invalid json}'
     ])
@@ -253,7 +246,6 @@ def test_create_search_malformed_json_string(runner: CliRunner, active_profile_w
 
 def test_create_search_json_not_list(runner: CliRunner, active_profile_with_real_credentials):
     """Test create search where JSON is not a list."""
-    profile_name = active_profile_with_real_credentials
     result = runner.invoke(cli_entry_point, [
         'search', 'create', '--name', 'Not List', '--conditions-json', '{"condition": "a"}' 
     ])
@@ -263,7 +255,6 @@ def test_create_search_json_not_list(runner: CliRunner, active_profile_with_real
 
 def test_create_search_invalid_condition_structure(runner: CliRunner, active_profile_with_real_credentials):
     """Test create search with missing keys in a condition object."""
-    profile_name = active_profile_with_real_credentials
     invalid_conditions = json.dumps([{"condition": "title", "operator": "is"}]) # Missing 'value'
     result = runner.invoke(cli_entry_point, [
         'search', 'create', '--name', 'Bad Condition', '--conditions-json', invalid_conditions
@@ -277,7 +268,6 @@ def test_create_search_invalid_condition_structure(runner: CliRunner, active_pro
 
 def test_delete_search_success_single_force(runner: CliRunner, active_profile_with_real_credentials, temp_saved_search, real_api_credentials):
     """Test successful deletion of a single search with --force."""
-    profile_name = active_profile_with_real_credentials
     search_key = temp_saved_search['key']
     
     result = runner.invoke(cli_entry_point, ['search', 'delete', search_key, '--force'], catch_exceptions=False)
@@ -293,7 +283,6 @@ def test_delete_search_success_single_force(runner: CliRunner, active_profile_wi
 
 def test_delete_search_success_multiple_force(runner: CliRunner, active_profile_with_real_credentials, real_api_credentials):
     """Test successful deletion of multiple searches with --force."""
-    profile_name = active_profile_with_real_credentials
     
     # Create two temporary searches for this test
     zot = zotero.Zotero(real_api_credentials['library_id'], real_api_credentials['library_type'], real_api_credentials['api_key'])
@@ -321,7 +310,7 @@ def test_delete_search_success_multiple_force(runner: CliRunner, active_profile_
         )
         
         assert result.exit_code == 0, f"Command failed with output: {result.output}"
-        assert f"Successfully deleted saved search(es):" in result.output
+        assert "Successfully deleted saved search(es):" in result.output
         assert search1_key in result.output
         assert search2_key in result.output
         
@@ -341,7 +330,6 @@ def test_delete_search_success_multiple_force(runner: CliRunner, active_profile_
 
 def test_delete_search_success_confirmation_yes(runner: CliRunner, active_profile_with_real_credentials, temp_saved_search, real_api_credentials):
     """Test successful deletion with user confirmation (yes)."""
-    profile_name = active_profile_with_real_credentials
     search_key = temp_saved_search['key']
     
     result = runner.invoke(cli_entry_point, ['search', 'delete', search_key], input='y', catch_exceptions=False)
@@ -358,7 +346,6 @@ def test_delete_search_success_confirmation_yes(runner: CliRunner, active_profil
 
 def test_delete_search_confirmation_no(runner: CliRunner, active_profile_with_real_credentials, temp_saved_search, real_api_credentials):
     """Test deletion cancellation with user confirmation (no)."""
-    profile_name = active_profile_with_real_credentials
     search_key = temp_saved_search['key']
     
     # Invoking with 'n' should cause click.Abort
@@ -376,7 +363,6 @@ def test_delete_search_confirmation_no(runner: CliRunner, active_profile_with_re
 
 def test_delete_search_no_keys_provided(runner: CliRunner, active_profile_with_real_credentials):
     """Test delete search command when no keys are provided."""
-    profile_name = active_profile_with_real_credentials
     # Don't need API credentials for this CLI validation test
     result = runner.invoke(cli_entry_point, ['search', 'delete']) 
     

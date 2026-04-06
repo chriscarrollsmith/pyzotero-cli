@@ -1,6 +1,7 @@
 import click
 import json as json_lib
 import os
+from typing import Any, Callable, cast
 
 # --- Define a comprehensive list of known Zotero sort keys ---
 # This list is for user guidance; not all keys are valid for all endpoints.
@@ -163,19 +164,27 @@ def prepare_api_params(limit=None, start=None, since=None, sort=None, direction=
         dict: Dictionary of parameters for Pyzotero API calls.
     """
     params = {}
-    if limit is not None: params['limit'] = limit
-    if start is not None: params['start'] = start
-    if since is not None: params['since'] = since  # Used for versioning/syncing
-    if sort is not None: params['sort'] = sort
-    if direction is not None: params['direction'] = direction
-    if query is not None: params['q'] = query
-    if qmode is not None: params['qmode'] = qmode
+    if limit is not None:
+        params['limit'] = limit
+    if start is not None:
+        params['start'] = start
+    if since is not None:
+        params['since'] = since  # Used for versioning/syncing
+    if sort is not None:
+        params['sort'] = sort
+    if direction is not None:
+        params['direction'] = direction
+    if query is not None:
+        params['q'] = query
+    if qmode is not None:
+        params['qmode'] = qmode
     if filter_tags:  # filter_tags is a tuple of strings from click
         # Pyzotero expects a list for multiple tags (results in tag=A&tag=B)
         # or a comma-separated string for some endpoints (tag=A,B).
         # For general items() filtering, list is usually preferred for AND.
         params['tag'] = list(filter_tags)
-    if filter_item_type is not None: params['itemType'] = filter_item_type
+    if filter_item_type is not None:
+        params['itemType'] = filter_item_type
     
     # Clean out None values explicitly, as Pyzotero might treat them as actual params
     params = {k: v for k, v in params.items() if v is not None}
@@ -229,7 +238,7 @@ try:
 except ImportError:
     tabulate = None # type: ignore
 
-from pyzotero import zotero_errors # For specific Zotero exceptions
+from pyzotero import zotero_errors  # noqa: E402 - must come after optional imports
 
 # Table header presets for common Zotero entities
 TABLE_HEADER_PRESETS = {
@@ -307,7 +316,7 @@ def format_data_for_output(data, output_format, requested_fields_or_key=None, ta
                 for display_name, accessor in table_headers_map:
                     if callable(accessor):
                         try:
-                            item_dict[display_name] = accessor(raw_item)
+                            item_dict[display_name] = cast(Callable[[Any], Any], accessor)(raw_item)
                         except Exception: # pylint: disable=broad-except
                             item_dict[display_name] = '' # Graceful failure for accessor
                     elif isinstance(accessor, str): # dot-path string
@@ -315,7 +324,8 @@ def format_data_for_output(data, output_format, requested_fields_or_key=None, ta
                         try:
                             for part in accessor.split('.'):
                                 current_value = current_value.get(part) if isinstance(current_value, dict) else None
-                                if current_value is None: break
+                                if current_value is None:
+                                    break
                             item_dict[display_name] = current_value if current_value is not None else ''
                         except AttributeError:
                             item_dict[display_name] = ''

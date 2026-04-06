@@ -5,7 +5,6 @@ import yaml
 import uuid
 import traceback
 from pyzotero_cli.zot_cli import zot
-from pyzotero.zotero_errors import ResourceNotFoundError
 
 # Use the isolated_config fixture defined in main conftest.py
 pytestmark = pytest.mark.usefixtures("isolated_config")
@@ -22,9 +21,8 @@ def temp_tag_in_library(zot_instance):
     item_key = None
     if item_resp and 'successful' in item_resp and item_resp['successful']:
         item_key = list(item_resp['successful'].keys())[0]
-        created_item = zot_api_client.item(item_key)
     else:
-        pytest.fail(f"Failed to create temporary item needed for tag fixture setup: {item_resp}")
+        pytest.fail(f"Failed to create temporary item needed for tag fixture setup: {item_resp}")  # ty:ignore[invalid-argument-type]
 
     yield tag_name # Yield the tag name to the test
 
@@ -46,7 +44,7 @@ def test_list_tags_default_output(temp_tag_in_library, active_profile_with_real_
         assert isinstance(output_json, list)
         assert tag_to_check in output_json
     except json.JSONDecodeError:
-        pytest.fail(f"Default output was not valid JSON: {result.output}")
+        pytest.fail(f"Default output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
 
 def test_list_tags_json_output(temp_tag_in_library, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_check = temp_tag_in_library
@@ -57,7 +55,7 @@ def test_list_tags_json_output(temp_tag_in_library, active_profile_with_real_cre
         assert isinstance(output_json, list)
         assert tag_to_check in output_json
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result.output}")
+        pytest.fail(f"Output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
 
 def test_list_tags_yaml_output(temp_tag_in_library, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_check = temp_tag_in_library
@@ -68,7 +66,7 @@ def test_list_tags_yaml_output(temp_tag_in_library, active_profile_with_real_cre
         assert isinstance(output_yaml, list)
         assert tag_to_check in output_yaml
     except yaml.YAMLError:
-        pytest.fail(f"Output was not valid YAML: {result.output}")
+        pytest.fail(f"Output was not valid YAML: {result.output}")  # ty:ignore[invalid-argument-type]
 
 def test_list_tags_with_limit(zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     zot_api_client = zot_instance
@@ -100,10 +98,12 @@ def test_list_tags_with_limit(zot_instance, active_profile_with_real_credentials
         for item_obj in items_to_cleanup:
             try:
                 zot_api_client.delete_item(item_obj)
-            except Exception: pass
+            except Exception:
+                pass
         try:
             zot_api_client.delete_tags(tag1, tag2)
-        except Exception: pass
+        except Exception:
+            pass
 
 
 # Tests for 'zot-cli tag list-for-item'
@@ -116,7 +116,7 @@ def test_list_item_tags_default_output(temp_item_with_tags, active_profile_with_
         assert isinstance(output_json, list)
         assert sorted(output_json) == sorted(expected_tags)
     except json.JSONDecodeError:
-        pytest.fail(f"Default output was not valid JSON: {result.output}")
+        pytest.fail(f"Default output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
 
 def test_list_item_tags_json_output(temp_item_with_tags, active_profile_with_real_credentials, runner: CliRunner):
     item_key, expected_tags = temp_item_with_tags
@@ -127,7 +127,7 @@ def test_list_item_tags_json_output(temp_item_with_tags, active_profile_with_rea
         assert isinstance(output_json, list)
         assert sorted(output_json) == sorted(expected_tags)
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result.output}")
+        pytest.fail(f"Output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
 
 def test_list_item_tags_non_existent_item(runner: CliRunner, active_profile_with_real_credentials):
     non_existent_key = f"NONEXISTENTKEY{uuid.uuid4()}" # Ensure truly non-existent

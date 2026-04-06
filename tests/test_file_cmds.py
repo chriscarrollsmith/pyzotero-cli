@@ -40,7 +40,7 @@ def temp_item_with_real_attachment(zot_instance, temp_parent_item, temp_local_fi
 
     resp_create = zot_instance.create_items([template])
     if not resp_create or 'success' not in resp_create or not resp_create['success'] or '0' not in resp_create['success']:
-        pytest.fail(f"Failed to create attachment item via create_items: {resp_create}")
+        pytest.fail(f"Failed to create attachment item via create_items: {resp_create}")  # ty:ignore[invalid-argument-type]
         
     real_attachment_key = resp_create['success']['0']
     print(f"Created attachment item {real_attachment_key}, now uploading file...") # Debugging
@@ -52,11 +52,11 @@ def temp_item_with_real_attachment(zot_instance, temp_parent_item, temp_local_fi
         # Fetch the created item to get its full structure including version
         attachment_item_dict = zot_instance.item(real_attachment_key)
         if not attachment_item_dict:
-             pytest.fail(f"Failed to fetch created attachment item {real_attachment_key} after creation.")
+             pytest.fail(f"Failed to fetch created attachment item {real_attachment_key} after creation.")  # ty:ignore[invalid-argument-type]
         # Assuming .item() returns the item dict directly, not a list of one item
         attachment_item_data = attachment_item_dict['data'] 
     except Exception as e:
-        pytest.fail(f"Failed to fetch created attachment item {real_attachment_key}: {e}")
+        pytest.fail(f"Failed to fetch created attachment item {real_attachment_key}: {e}")  # ty:ignore[invalid-argument-type]
         
     # Prepare for upload_attachments: list of dicts, 'filename' needs to be local path
     # The dict should be the 'data' part of the item structure.
@@ -75,7 +75,7 @@ def temp_item_with_real_attachment(zot_instance, temp_parent_item, temp_local_fi
                    ('unchanged' in resp_upload and any(item.get('key') == real_attachment_key for item in resp_upload['unchanged']))
 
     if not (is_successful or is_unchanged):
-         pytest.fail(f"Failed to upload file content for attachment {real_attachment_key}: {resp_upload}")
+         pytest.fail(f"Failed to upload file content for attachment {real_attachment_key}: {resp_upload}")  # ty:ignore[invalid-argument-type]
          
     print(f"Successfully uploaded/verified file content for {real_attachment_key}") # Debugging
 
@@ -95,7 +95,7 @@ def temp_empty_attachment(zot_instance, temp_parent_item):
 
     resp = zot_instance.create_items([template])
     if not resp['success'] or '0' not in resp['success']:
-        pytest.fail(f"Failed to create empty attachment item: {resp}")
+        pytest.fail(f"Failed to create empty attachment item: {resp}")  # ty:ignore[invalid-argument-type]
     
     attachment_key = resp['success']['0']
     print(f"Created temp empty attachment: {attachment_key} under parent {parent_key}") # Debugging
@@ -325,13 +325,13 @@ def test_file_upload_batch(runner, active_profile_with_real_credentials, temp_pa
     assert "Attempting to upload 2 file(s)..." in result.stdout # Check upload step initiation
     assert "Batch upload results:" in result.stdout
     # Check success messages - format depends slightly on implementation (item key vs title)
-    assert (f"Successfully uploaded file for item: Batch Upload New.txt" in result.stdout or 
-            f"File for item Batch Upload New.txt" in result.stdout)
+    assert ("Successfully uploaded file for item: Batch Upload New.txt" in result.stdout or 
+            "File for item Batch Upload New.txt" in result.stdout)
     # Allow either success or unchanged for the existing item, checking by title or key
-    assert (f"Successfully uploaded file for item: Empty Test Attachment" in result.stdout or
+    assert ("Successfully uploaded file for item: Empty Test Attachment" in result.stdout or
             f"Successfully uploaded file for item: {existing_attachment_key}" in result.stdout or
-            f"File for item Empty Test Attachment" in result.stdout or
-            f"File for item test_attachment_2.pdf" in result.stdout or # Check original title if fetch failed
+            "File for item Empty Test Attachment" in result.stdout or
+            "File for item test_attachment_2.pdf" in result.stdout or # Check original title if fetch failed
             f"File for item {existing_attachment_key}" in result.stdout)
 
     # Verify using API
@@ -350,7 +350,7 @@ def test_file_upload_batch(runner, active_profile_with_real_credentials, temp_pa
         assert len(file_content_new) > 0
         assert "Content for file 1." in file_content_new.decode('utf-8', errors='ignore')
     except Exception as e:
-        pytest.fail(f"Failed to retrieve file content for newly created batch attachment {new_attach['key']}: {e}")
+        pytest.fail(f"Failed to retrieve file content for newly created batch attachment {new_attach['key']}: {e}")  # ty:ignore[invalid-argument-type]
 
     # 2. Check the existing attachment that was updated
     existing_attach_updated = zot_instance.item(existing_attachment_key)
@@ -362,4 +362,4 @@ def test_file_upload_batch(runner, active_profile_with_real_credentials, temp_pa
         assert len(file_content_existing) > 0
         assert "Content for file 2" in file_content_existing.decode('utf-8', errors='ignore')
     except Exception as e:
-        pytest.fail(f"Failed to retrieve file content for existing batch attachment {existing_attachment_key}: {e}")
+        pytest.fail(f"Failed to retrieve file content for existing batch attachment {existing_attachment_key}: {e}")  # ty:ignore[invalid-argument-type]

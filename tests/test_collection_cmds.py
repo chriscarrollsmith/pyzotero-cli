@@ -25,11 +25,10 @@ pytestmark = pytest.mark.usefixtures("isolated_config")
 def temp_collection_in_library(active_profile_with_real_credentials):
     """Creates a temporary collection in the real Zotero library and cleans up."""
     runner = CliRunner()
-    profile_name = active_profile_with_real_credentials
     collection_name = f"pytest_temp_collection_{os.urandom(4).hex()}"
 
     # Create the collection
-    result_create = runner.invoke(zot, ['--profile', profile_name, 'collections', 'create', '--name', collection_name])
+    result_create = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'create', '--name', collection_name])
     print("Create output:", result_create.output)
     print("Create exception:", result_create.exception)
     assert result_create.exit_code == 0
@@ -48,7 +47,7 @@ def temp_collection_in_library(active_profile_with_real_credentials):
         # Cleanup: Delete the collection
         # Initialize collection_key to None before try block
         if collection_key:  # Now safely bound
-            result_delete = runner.invoke(zot, ['--profile', profile_name, 'collections', 'delete', collection_key, '--force'])
+            result_delete = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'delete', collection_key, '--force'])
             print(f"Cleanup delete output for {collection_key}:", result_delete.output)
         else:
              print(f"Skipping cleanup for collection '{collection_name}' as key was not obtained.")
@@ -90,10 +89,9 @@ def test_collection_group_init_error(mock_zotero_class, runner, active_profile_w
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_list_basic(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
     collection_key = temp_collection_in_library # Fixture creates collection
 
-    result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'list'])
+    result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'list'])
     print("List basic output:", result.output)
     assert result.exit_code == 0
     # mock_zot_instance.collections.assert_called_once_with() # No extra params passed - REMOVE MOCK ASSERTION
@@ -105,19 +103,18 @@ def test_collection_list_basic(runner, active_profile_with_real_credentials, tem
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_list_top(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
     parent_key = temp_collection_in_library # This is a top-level collection
     child_name = f"pytest_child_for_top_{os.urandom(4).hex()}"
     child_key = None
 
     try:
         # Create a child collection to test filtering
-        result_create_child = runner.invoke(zot, ['--profile', profile_name, 'collections', 'create', '--name', child_name, '--parent-id', parent_key])
+        result_create_child = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'create', '--name', child_name, '--parent-id', parent_key])
         assert result_create_child.exit_code == 0
         child_key = json.loads(result_create_child.output.strip())['success']['0']
         assert child_key
 
-        result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'list', '--top'])
+        result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'list', '--top'])
         print("List top output:", result.output)
         assert result.exit_code == 0
         output_data = json.loads(result.output)
@@ -127,25 +124,24 @@ def test_collection_list_top(runner, active_profile_with_real_credentials, temp_
     finally:
         # Cleanup child collection
         if child_key:
-            runner.invoke(zot, ['--profile', profile_name, 'collections', 'delete', child_key, '--force'])
+            runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'delete', child_key, '--force'])
 
 
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_list_with_params(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
-    collection_key = temp_collection_in_library
+    _collection_key = temp_collection_in_library  # fixture needed for side effects
 
     # Create another collection to test limit/sort
     other_name = f"pytest_zother_coll_{os.urandom(4).hex()}"
     other_key = None
     try:
-        result_create = runner.invoke(zot, ['--profile', profile_name, 'collections', 'create', '--name', other_name])
+        result_create = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'create', '--name', other_name])
         assert result_create.exit_code == 0
         other_key = json.loads(result_create.output.strip())['success']['0']
 
         # Assuming default sort is dateModified descending, limit 1 should give the newest one (other_key)
-        result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'list', '--limit', '1']) # Removed sort=name for simplicity now
+        result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'list', '--limit', '1']) # Removed sort=name for simplicity now
         print("List params output:", result.output)
         assert result.exit_code == 0
         # mock_zot_instance.collections.assert_called_once_with(limit=5, sort='name') - REMOVE MOCK ASSERTION
@@ -157,18 +153,17 @@ def test_collection_list_with_params(runner, active_profile_with_real_credential
 
     finally:
         if other_key:
-            runner.invoke(zot, ['--profile', profile_name, 'collections', 'delete', other_key, '--force'])
+            runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'delete', other_key, '--force'])
 
 
 # Test `collection get`
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_get_basic(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
     collection_key = temp_collection_in_library
 
     # Retrieve the collection created by the fixture
-    result_get = runner.invoke(zot, ['--profile', profile_name, 'collections', 'get', collection_key])
+    result_get = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'get', collection_key])
     print("Get basic output:", result_get.output)
     assert result_get.exit_code == 0
     output_data = json.loads(result_get.output)
@@ -184,10 +179,9 @@ def test_collection_get_basic(runner, active_profile_with_real_credentials, temp
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_get_not_found(runner, active_profile_with_real_credentials):
-    profile_name = active_profile_with_real_credentials
     non_existent_key = f"NONEXISTENT_{os.urandom(4).hex()}"
 
-    result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'get', non_existent_key])
+    result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'get', non_existent_key])
     print("Get not found output:", result.output)
     # Updated to expect exit code 1 for "not found" error - this is the correct behavior
     assert result.exit_code == 1
@@ -200,20 +194,19 @@ def test_collection_get_not_found(runner, active_profile_with_real_credentials):
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_subcollections_basic(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
     parent_key = temp_collection_in_library
     child_name = f"pytest_subcoll_child_{os.urandom(4).hex()}"
     child_key = None
 
     try:
         # Create child collection
-        result_create_child = runner.invoke(zot, ['--profile', profile_name, 'collections', 'create', '--name', child_name, '--parent-id', parent_key])
+        result_create_child = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'create', '--name', child_name, '--parent-id', parent_key])
         assert result_create_child.exit_code == 0
         child_key = json.loads(result_create_child.output.strip())['success']['0']
         assert child_key
 
         # Get subcollections of parent
-        result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'subcollections', parent_key])
+        result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'subcollections', parent_key])
         print("Subcollections basic output:", result.output)
         assert result.exit_code == 0
         output_data = json.loads(result.output)
@@ -221,25 +214,24 @@ def test_collection_subcollections_basic(runner, active_profile_with_real_creden
         assert any(coll['key'] == child_key and coll['data'].get('parentCollection') == parent_key for coll in output_data)
     finally:
         if child_key:
-            runner.invoke(zot, ['--profile', profile_name, 'collections', 'delete', child_key, '--force'])
+            runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'delete', child_key, '--force'])
 
 
 # Test `collection all`
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_all_basic(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
     parent_key = temp_collection_in_library
     child_name = f"pytest_all_child_{os.urandom(4).hex()}"
     child_key = None
 
     try:
         # Create child
-        result_create_child = runner.invoke(zot, ['--profile', profile_name, 'collections', 'create', '--name', child_name, '--parent-id', parent_key])
+        result_create_child = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'create', '--name', child_name, '--parent-id', parent_key])
         assert result_create_child.exit_code == 0
         child_key = json.loads(result_create_child.output.strip())['success']['0']
 
-        result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'all'])
+        result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'all'])
         print("All basic output:", result.output)
         assert result.exit_code == 0
         output_data = json.loads(result.output)
@@ -249,25 +241,24 @@ def test_collection_all_basic(runner, active_profile_with_real_credentials, temp
         assert any(coll['key'] == child_key for coll in output_data)
     finally:
         if child_key:
-            runner.invoke(zot, ['--profile', profile_name, 'collections', 'delete', child_key, '--force'])
+            runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'delete', child_key, '--force'])
 
 
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_all_with_parent(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
     parent_key = temp_collection_in_library
     child_name = f"pytest_all_parent_child_{os.urandom(4).hex()}"
     child_key = None
 
     try:
         # Create child
-        result_create_child = runner.invoke(zot, ['--profile', profile_name, 'collections', 'create', '--name', child_name, '--parent-id', parent_key])
+        result_create_child = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'create', '--name', child_name, '--parent-id', parent_key])
         assert result_create_child.exit_code == 0
         child_key = json.loads(result_create_child.output.strip())['success']['0']
 
         # Call 'all' starting from the parent
-        result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'all', '--parent-collection-id', parent_key])
+        result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'all', '--parent-collection-id', parent_key])
         print("All with parent output:", result.output)
         assert result.exit_code == 0
         # mock_zot_instance.all_collections.assert_called_once_with(collectionID='P1') - REMOVE MOCK ASSERTION
@@ -278,15 +269,14 @@ def test_collection_all_with_parent(runner, active_profile_with_real_credentials
         assert any(coll['key'] == child_key for coll in output_data)
     finally:
         if child_key:
-            runner.invoke(zot, ['--profile', profile_name, 'collections', 'delete', child_key, '--force'])
+            runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'delete', child_key, '--force'])
 
 
 # Test `collection items`
 def test_collection_items_basic(runner, active_profile_with_real_credentials, temp_collection_in_library, temp_item_with_tags): # Add fixtures
-    profile_name = active_profile_with_real_credentials
     collection_key = temp_collection_in_library
     # We need the real key before adding it to the collection.
-    result_get_item = runner.invoke(zot, ['--profile', profile_name, 'items', 'list', '--limit', '1'])
+    result_get_item = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'items', 'list', '--limit', '1'])
     assert result_get_item.exit_code == 0, f"Failed to list items. Exit code: {result_get_item.exit_code}. Output: {result_get_item.output}"
     items_list = json.loads(result_get_item.output.strip())
     assert len(items_list) >= 1, "Failed to find the item created by the fixture"
@@ -294,7 +284,7 @@ def test_collection_items_basic(runner, active_profile_with_real_credentials, te
     # item_key, _ = temp_item_with_tags # Get item key from fixture # <-- Original problematic line
 
     # Add the item to the collection first
-    result_add = runner.invoke(zot, ['--profile', profile_name, 'collections', 'add-item', collection_key, item_key])
+    result_add = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'add-item', collection_key, item_key])
     print("Add item output for items_basic:", result_add.output) # Add print for debug
     assert result_add.exit_code == 0
     # Parse the JSON output and check the message
@@ -304,7 +294,7 @@ def test_collection_items_basic(runner, active_profile_with_real_credentials, te
     assert add_output_data[0].get(item_key) == f"Added to collection '{collection_key}'.", f"Unexpected add-item response key/message. Expected key: {item_key}"
     # assert f"Added to collection '{collection_key}'" in result_add.output # Incorrect assertion removed
 
-    result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'items', collection_key])
+    result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'items', collection_key])
     print("Items basic output:", result.output)
     assert result.exit_code == 0
     output_data = json.loads(result.output)
@@ -312,17 +302,16 @@ def test_collection_items_basic(runner, active_profile_with_real_credentials, te
     assert any(item['key'] == item_key for item in output_data), f"Item {item_key} not found in collection {collection_key} items list"
 
 def test_collection_items_top(runner, active_profile_with_real_credentials, temp_collection_in_library, temp_item_with_tags):
-    profile_name = active_profile_with_real_credentials
     collection_key = temp_collection_in_library
     # WORKAROUND: Fetch the actual item key, similar to test_collection_items_basic
-    result_get_item = runner.invoke(zot, ['--profile', profile_name, 'items', 'list', '--limit', '1'])
+    result_get_item = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'items', 'list', '--limit', '1'])
     assert result_get_item.exit_code == 0, f"Failed to list items. Exit code: {result_get_item.exit_code}. Output: {result_get_item.output}"
     items_list = json.loads(result_get_item.output.strip())
     assert len(items_list) >= 1, "Failed to find the item created by the fixture"
     item_key = items_list[0]['key'] # Get the key of the most recently modified item
 
     # Add the item to the collection
-    result_add = runner.invoke(zot, ['--profile', profile_name, 'collections', 'add-item', collection_key, item_key])
+    result_add = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'add-item', collection_key, item_key])
     print("Add item output for items_top:", result_add.output) # Add print for debug
     assert result_add.exit_code == 0
     # Parse the JSON output and check the message
@@ -330,7 +319,7 @@ def test_collection_items_top(runner, active_profile_with_real_credentials, temp
     assert isinstance(add_output_data, list) and len(add_output_data) == 1
     assert add_output_data[0].get(item_key) == f"Added to collection '{collection_key}'.", f"Unexpected add-item response key/message. Expected key: {item_key}"
 
-    result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'items', collection_key, '--top'])
+    result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'items', collection_key, '--top'])
     print("Items top output:", result.output)
     assert result.exit_code == 0
     output_data = json.loads(result.output)
@@ -340,12 +329,11 @@ def test_collection_items_top(runner, active_profile_with_real_credentials, temp
 
 # Test `collection item-count`
 def test_collection_item_count_basic(runner, active_profile_with_real_credentials, temp_collection_in_library, temp_item_with_tags):
-    profile_name = active_profile_with_real_credentials
     collection_key = temp_collection_in_library
     item_key, _ = temp_item_with_tags # Get item key from fixture
 
     # Add the item
-    result_add = runner.invoke(zot, ['--profile', profile_name, 'collections', 'add-item', collection_key, item_key])
+    result_add = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'add-item', collection_key, item_key])
     print("Add item output for item_count:", result_add.output) # Add print for debug
     assert result_add.exit_code == 0
     # Parse JSON and check message
@@ -353,7 +341,7 @@ def test_collection_item_count_basic(runner, active_profile_with_real_credential
     assert isinstance(add_output_data, list) and len(add_output_data) == 1
     assert add_output_data[0].get(item_key) == f"Added to collection '{collection_key}'."
 
-    result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'item-count', collection_key])
+    result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'item-count', collection_key])
     print("Item count basic output:", result.output)
     assert result.exit_code == 0
     # mock_zot_instance.collection.assert_called_once_with('C1') - REMOVE MOCK ASSERTION
@@ -363,10 +351,9 @@ def test_collection_item_count_basic(runner, active_profile_with_real_credential
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_item_count_not_found(runner, active_profile_with_real_credentials):
-    profile_name = active_profile_with_real_credentials
     non_existent_key = f"NONEXISTENT_{os.urandom(4).hex()}"
 
-    result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'item-count', non_existent_key])
+    result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'item-count', non_existent_key])
     print("Item count not found output:", result.output)
     # Updated to expect exit code 1 for "not found" error - this is the correct behavior per error standardization
     assert result.exit_code == 1
@@ -379,10 +366,9 @@ def test_collection_item_count_not_found(runner, active_profile_with_real_creden
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_versions_basic(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
     collection_key = temp_collection_in_library
 
-    result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'versions'])
+    result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'versions'])
     print("Versions basic output:", result.output)
     assert result.exit_code == 0
     # mock_zot_instance.collection_versions.assert_called_once_with() - REMOVE MOCK ASSERTION
@@ -394,27 +380,26 @@ def test_collection_versions_basic(runner, active_profile_with_real_credentials,
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_versions_since(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
     first_collection_key = temp_collection_in_library
     second_collection_key = None
     second_collection_name = f"pytest_versions_since_{os.urandom(4).hex()}"
 
     try:
         # 1. Get current versions to find the version of the first collection
-        result_initial_versions = runner.invoke(zot, ['--profile', profile_name, 'collections', 'versions'])
+        result_initial_versions = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'versions'])
         assert result_initial_versions.exit_code == 0
         initial_versions = json.loads(result_initial_versions.output)
         initial_version = initial_versions.get(first_collection_key)
         assert initial_version is not None, "Could not get initial version of first collection"
 
         # 2. Create a second collection
-        result_create = runner.invoke(zot, ['--profile', profile_name, 'collections', 'create', '--name', second_collection_name])
+        result_create = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'create', '--name', second_collection_name])
         assert result_create.exit_code == 0
         second_collection_key = json.loads(result_create.output.strip())['success']['0']
         assert second_collection_key
 
         # 3. Get versions since the initial version
-        result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'versions', '--since', str(initial_version)])
+        result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'versions', '--since', str(initial_version)])
         print("Versions since output:", result.output)
         assert result.exit_code == 0
         # mock_zot_instance.collection_versions.assert_called_once_with(since='9') - REMOVE MOCK ASSERTION
@@ -428,14 +413,13 @@ def test_collection_versions_since(runner, active_profile_with_real_credentials,
     finally:
         # Cleanup second collection
         if second_collection_key:
-            runner.invoke(zot, ['--profile', profile_name, 'collections', 'delete', second_collection_key, '--force'])
+            runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'delete', second_collection_key, '--force'])
 
 
 # Test `collection create` (requires real API or more complex mocking)
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_create_and_delete_real(runner, active_profile_with_real_credentials):
     """Tests creating and deleting a collection using the real API."""
-    profile_name = active_profile_with_real_credentials
     collection_name = f"pytest_create_test_{os.urandom(4).hex()}"
     parent_name = f"pytest_create_parent_{os.urandom(4).hex()}"
     child_name = f"pytest_create_child_{os.urandom(4).hex()}"
@@ -445,7 +429,7 @@ def test_collection_create_and_delete_real(runner, active_profile_with_real_cred
 
     try:
         # 1. Create a single collection
-        result_create = runner.invoke(zot, ['--profile', profile_name, 'collections', 'create', '--name', collection_name])
+        result_create = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'create', '--name', collection_name])
         print("Create single output:", result_create.output)
         assert result_create.exit_code == 0
         # Use json.loads for robust parsing instead of eval
@@ -453,7 +437,7 @@ def test_collection_create_and_delete_real(runner, active_profile_with_real_cred
         single_key = output_dict['success']['0']
         assert single_key
         # Verify it exists (optional, relies on get working)
-        result_get = runner.invoke(zot, ['--profile', profile_name, 'collections', 'get', single_key])
+        result_get = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'get', single_key])
         assert result_get.exit_code == 0
         # Parse JSON and check the name in the data dictionary
         get_data = json.loads(result_get.output.strip())
@@ -463,14 +447,14 @@ def test_collection_create_and_delete_real(runner, active_profile_with_real_cred
         # assert f"'name': '{collection_name}'" in result_get.output
 
         # 2. Create parent and child
-        result_create_parent = runner.invoke(zot, ['--profile', profile_name, 'collections', 'create', '--name', parent_name])
+        result_create_parent = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'create', '--name', parent_name])
         print("Create parent output:", result_create_parent.output)
         assert result_create_parent.exit_code == 0
         # Use json.loads
         parent_key = json.loads(result_create_parent.output.strip())['success']['0']
         assert parent_key
 
-        result_create_child = runner.invoke(zot, ['--profile', profile_name, 'collections', 'create', '--name', child_name, '--parent-id', parent_key])
+        result_create_child = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'create', '--name', child_name, '--parent-id', parent_key])
         print("Create child output:", result_create_child.output)
         assert result_create_child.exit_code == 0
         # Use json.loads
@@ -478,7 +462,7 @@ def test_collection_create_and_delete_real(runner, active_profile_with_real_cred
         assert child_key
 
         # Verify child relationship (optional)
-        result_get_child = runner.invoke(zot, ['--profile', profile_name, 'collections', 'get', child_key])
+        result_get_child = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'get', child_key])
         assert result_get_child.exit_code == 0
         # Use json.loads and check structure
         child_data = json.loads(result_get_child.output.strip())
@@ -490,7 +474,7 @@ def test_collection_create_and_delete_real(runner, active_profile_with_real_cred
         # Cleanup
         keys_to_delete = [k for k in [single_key, child_key, parent_key] if k]
         if keys_to_delete:
-            delete_args = ['--profile', profile_name, 'collections', 'delete', '--force'] + keys_to_delete
+            delete_args = ['--profile', active_profile_with_real_credentials, 'collections', 'delete', '--force'] + keys_to_delete
             result_delete = runner.invoke(zot, delete_args)
             print("Cleanup delete output:", result_delete.output)
             # Don't assert exit code 0 strictly, focus is on creation success
@@ -498,26 +482,25 @@ def test_collection_create_and_delete_real(runner, active_profile_with_real_cred
 # Test `collection update` (requires real API via fixture)
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_update_name_real(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
     collection_key = temp_collection_in_library
     new_name = f"pytest_updated_name_{os.urandom(4).hex()}"
 
     # Get initial version
-    result_get = runner.invoke(zot, ['--profile', profile_name, 'collections', 'get', collection_key])
+    result_get = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'get', collection_key])
     assert result_get.exit_code == 0
     # Use json.loads - get returns a dict, not a list
     initial_data = json.loads(result_get.output.strip()) 
     initial_version = initial_data['version']
 
     # Update the name using the fetched version
-    result_update = runner.invoke(zot, ['--profile', profile_name, 'collections', 'update', collection_key, '--name', new_name, '--last-modified', str(initial_version)])
+    result_update = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'update', collection_key, '--name', new_name, '--last-modified', str(initial_version)])
     print("Update output:", result_update.output)
     assert result_update.exit_code == 0
     # Pyzotero update_collection returns True/False, not the updated object representation directly
     # assert 'True' in result_update.output # This assertion might be too brittle depending on exact output format
 
     # Verify the change
-    result_get_updated = runner.invoke(zot, ['--profile', profile_name, 'collections', 'get', collection_key])
+    result_get_updated = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'get', collection_key])
     assert result_get_updated.exit_code == 0
     # Use json.loads and check structure - get returns a dict
     updated_data = json.loads(result_get_updated.output.strip())
@@ -528,11 +511,10 @@ def test_collection_update_name_real(runner, active_profile_with_real_credential
 
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_update_precondition_fail_real(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
     collection_key = temp_collection_in_library
     wrong_version = "1" # Definitely wrong version
 
-    result_update = runner.invoke(zot, ['--profile', profile_name, 'collections', 'update', collection_key, '--name', 'wontwork', '--last-modified', wrong_version])
+    result_update = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'update', collection_key, '--name', 'wontwork', '--last-modified', wrong_version])
     # Updated to expect exit code 1 for API errors - this is the correct standardized behavior
     assert result_update.exit_code == 1
     # Check for standardized error message format
@@ -560,11 +542,10 @@ def test_collection_update_no_options(runner, active_profile_with_real_credentia
 # Test `collection delete` (uses fixture for temp collection)
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_delete_real_force(runner, active_profile_with_real_credentials, temp_collection_in_library):
-    profile_name = active_profile_with_real_credentials
     collection_key = temp_collection_in_library # Fixture provides the key
 
     # Delete with force
-    result_delete = runner.invoke(zot, ['--profile', profile_name, 'collections', 'delete', collection_key, '--force'])
+    result_delete = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'delete', collection_key, '--force'])
     print("Delete output:", result_delete.output)
     assert result_delete.exit_code == 0
     # Check output for success message (adapt if output format changes)
@@ -575,7 +556,7 @@ def test_collection_delete_real_force(runner, active_profile_with_real_credentia
     # assert f"'{collection_key}': 'Successfully deleted'" in result_delete.output.replace('"',"'") # Normalize quotes
 
     # Verify deletion (expect not found)
-    result_get = runner.invoke(zot, ['--profile', profile_name, 'collections', 'get', collection_key])
+    result_get = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'get', collection_key])
     # Updated to expect exit code 1 for deleted (not found) collection - this is the correct behavior
     assert result_get.exit_code == 1
     # Check for key components of the error message
@@ -587,12 +568,11 @@ def test_collection_delete_real_force(runner, active_profile_with_real_credentia
 # Test `collection add-item`
 @pytest.mark.usefixtures("active_profile_with_real_credentials", "temp_item_with_tags")
 def test_collection_add_item_real(runner, active_profile_with_real_credentials, temp_collection_in_library, temp_item_with_tags):
-    profile_name = active_profile_with_real_credentials
     collection_key = temp_collection_in_library
     item_key, _ = temp_item_with_tags # Fixture provides item key
 
     # Add item to collection
-    result_add = runner.invoke(zot, ['--profile', profile_name, 'collections', 'add-item', collection_key, item_key])
+    result_add = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'add-item', collection_key, item_key])
     print("Add item output:", result_add.output)
     assert result_add.exit_code == 0
     # Parse JSON output (list of dicts)
@@ -602,7 +582,7 @@ def test_collection_add_item_real(runner, active_profile_with_real_credentials, 
     # assert f"'{item_key}': \"Added to collection '{collection_key}'.\"" in result_add.output.replace("'", '"') # Normalize quotes for assertion
 
     # Verify item is in collection
-    result_item_get = runner.invoke(zot, ['--profile', profile_name, 'items', 'get', item_key])
+    result_item_get = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'items', 'get', item_key])
     assert result_item_get.exit_code == 0
     # Use json.loads
     item_data = json.loads(result_item_get.output.strip())
@@ -613,7 +593,7 @@ def test_collection_add_item_real(runner, active_profile_with_real_credentials, 
     assert collection_key in item_details.get('data', {}).get('collections', [])
 
     # Test adding again (should report already exists)
-    result_add_again = runner.invoke(zot, ['--profile', profile_name, 'collections', 'add-item', collection_key, item_key])
+    result_add_again = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'add-item', collection_key, item_key])
     assert result_add_again.exit_code == 0
     # Parse JSON
     add_again_output_data = json.loads(result_add_again.output.strip())
@@ -624,18 +604,17 @@ def test_collection_add_item_real(runner, active_profile_with_real_credentials, 
 # Test `collection remove-item`
 @pytest.mark.usefixtures("active_profile_with_real_credentials", "temp_item_with_tags")
 def test_collection_remove_item_real(runner, active_profile_with_real_credentials, temp_item_with_tags):
-    profile_name = active_profile_with_real_credentials
     item_key, _ = temp_item_with_tags # Get item key from fixture
     
     # Create our own temporary collection for this test to avoid fixture cleanup issues
     temp_collection_name = f"pytest_remove_item_test_{os.urandom(4).hex()}"
-    result_create = runner.invoke(zot, ['--profile', profile_name, 'collections', 'create', '--name', temp_collection_name])
+    result_create = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'create', '--name', temp_collection_name])
     assert result_create.exit_code == 0
     collection_key = json.loads(result_create.output.strip())['success']['0']
     
     try:
         # First, add the item to the collection
-        add_result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'add-item', collection_key, item_key])
+        add_result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'add-item', collection_key, item_key])
         print("Add item output for remove_item_real:", add_result.output) # Add print for debug
         assert add_result.exit_code == 0
         # Parse JSON and check message
@@ -644,7 +623,7 @@ def test_collection_remove_item_real(runner, active_profile_with_real_credential
         assert add_output_data[0].get(item_key) == f"Added to collection '{collection_key}'."
 
         # Now, remove the item with force
-        result_remove = runner.invoke(zot, ['--profile', profile_name, 'collections', 'remove-item', collection_key, item_key, '--force'])
+        result_remove = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'remove-item', collection_key, item_key, '--force'])
         print("Remove item output:", result_remove.output)
         assert result_remove.exit_code == 0
         # Parse JSON
@@ -653,7 +632,7 @@ def test_collection_remove_item_real(runner, active_profile_with_real_credential
         assert remove_output_data[0].get(item_key) == f"Removed from collection '{collection_key}'."
 
         # Verify item is NOT in collection
-        result_item_get = runner.invoke(zot, ['--profile', profile_name, 'items', 'get', item_key])
+        result_item_get = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'items', 'get', item_key])
         assert result_item_get.exit_code == 0
         # Use json.loads
         item_data = json.loads(result_item_get.output.strip())
@@ -663,7 +642,7 @@ def test_collection_remove_item_real(runner, active_profile_with_real_credential
         assert collection_key not in item_details.get('data', {}).get('collections', [])
         
         # Test removing again (should report not found in collection)
-        result_remove_again = runner.invoke(zot, ['--profile', profile_name, 'collections', 'remove-item', collection_key, item_key, '--force'])
+        result_remove_again = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'remove-item', collection_key, item_key, '--force'])
         print("Remove again output:", result_remove_again.output)
         # Updated to expect exit code 1 when item is not found in collection - this is the correct standardized behavior
         assert result_remove_again.exit_code == 1
@@ -674,7 +653,7 @@ def test_collection_remove_item_real(runner, active_profile_with_real_credential
         
     finally:
         # Clean up our temporary collection
-        runner.invoke(zot, ['--profile', profile_name, 'collections', 'delete', collection_key, '--force'])
+        runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'delete', collection_key, '--force'])
 
 
 # Test `collection tags`
@@ -683,10 +662,9 @@ def test_collection_tags_basic(runner, active_profile_with_real_credentials, tem
     # NOTE: Zotero collections do not have tags directly applied to them like items do.
     # This test verifies that the command runs and returns an empty list, which is the
     # expected behavior when calling pyzotero's collection_tags.
-    profile_name = active_profile_with_real_credentials
     collection_key = temp_collection_in_library
 
-    result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'tags', collection_key])
+    result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'tags', collection_key])
     print("Collection tags output:", result.output)
     assert result.exit_code == 0, f"Command failed unexpectedly. Output: {result.output}"
     
@@ -695,15 +673,14 @@ def test_collection_tags_basic(runner, active_profile_with_real_credentials, tem
         assert isinstance(output_data, list), "Output should be a list."
         assert output_data == [], f"Expected an empty list for collection tags, but got: {output_data}"
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result.output}")
+        pytest.fail(f"Output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
 
 
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_tags_collection_not_found(runner, active_profile_with_real_credentials):
-    profile_name = active_profile_with_real_credentials
     non_existent_key = f"NONEXISTENT_{os.urandom(4).hex()}"
 
-    result = runner.invoke(zot, ['--profile', profile_name, 'collections', 'tags', non_existent_key])
+    result = runner.invoke(zot, ['--profile', active_profile_with_real_credentials, 'collections', 'tags', non_existent_key])
     print("Collection tags not found output:", result.output)
     # Updated to expect exit code 1 for non-existent collection - this is the correct behavior
     assert result.exit_code == 1

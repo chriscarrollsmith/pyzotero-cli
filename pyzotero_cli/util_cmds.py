@@ -1,5 +1,4 @@
 import click
-from pyzotero import zotero
 from .utils import format_data_for_output, handle_zotero_exceptions_and_exit, initialize_zotero_client
 from typing import cast
 from tabulate import tabulate

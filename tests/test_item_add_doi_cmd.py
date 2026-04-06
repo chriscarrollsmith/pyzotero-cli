@@ -1,7 +1,6 @@
 import json
 import uuid
 import pytest
-from click.testing import CliRunner
 
 from pyzotero_cli.zot_cli import zot
 

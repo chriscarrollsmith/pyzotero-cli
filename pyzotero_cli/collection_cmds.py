@@ -28,9 +28,6 @@ def collection_list(ctx, top, limit, start, since, sort, direction, output, quer
     """List collections in the Zotero library."""
     zot_client = ctx.obj['zotero_client']
     
-    # Determine which API method is being used
-    api_method = 'collections_top' if top else 'collections'
-    
     api_params = prepare_api_params(limit, start, since, sort, direction, query, qmode, filter_tags, filter_item_type)
     
     try:
@@ -368,14 +365,16 @@ def collection_add_item(ctx, collection_key_or_id, item_key_or_id, limit, start,
                     results_summary.append({item_key: f"Item '{item_key}' not found or invalid data returned."})
                     continue
 
-                if 'data' not in item_data: item_data['data'] = {}
+                if 'data' not in item_data:
+                    item_data['data'] = {}
                 if 'collections' not in item_data['data']:
                     item_data['data']['collections'] = []
-                
+
                 if collection_key_or_id not in item_data['data']['collections']:
                     item_data['data']['collections'].append(collection_key_or_id)
-                    
-                    if item_data.get('key') is None: item_data['key'] = item_key 
+
+                    if item_data.get('key') is None:
+                        item_data['key'] = item_key
                     if item_data.get('version') is None:
                         # This case should ideally not happen if item was fetched successfully
                         raise click.ClickException(f"Could not determine version for item '{item_key}' before update.")
@@ -448,7 +447,8 @@ def collection_remove_item(ctx, collection_key_or_id, item_key_or_id, force, lim
                 if isinstance(item_data.get('data'), dict) and isinstance(item_data['data'].get('collections'), list) and collection_key_or_id in item_data['data']['collections']:
                     item_data['data']['collections'].remove(collection_key_or_id)
                     
-                    if item_data.get('key') is None: item_data['key'] = item_key
+                    if item_data.get('key') is None:
+                        item_data['key'] = item_key
                     if item_data.get('version') is None:
                          raise click.ClickException(f"Could not determine version for item '{item_key}' before update.")
                     

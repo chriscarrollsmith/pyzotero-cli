@@ -233,7 +233,7 @@ def _determine_zotero_item_type(csl_json: dict[str, Any]) -> str:
     if csl_type == "article" and container_title:
         return "journalArticle"
 
-    return CSL_TO_ZOTERO_ITEM_TYPE.get(csl_type, "document")
+    return CSL_TO_ZOTERO_ITEM_TYPE.get(csl_type or "", "document")
 
 
 def _extract_titles(csl_json: dict[str, Any]) -> tuple[str, str]:
