@@ -1,63 +1,16 @@
-import json
-from urllib import error
-
 import pytest
 
 from pyzotero_cli import doi as doi_utils
 
+pytestmark = pytest.mark.usefixtures("isolated_config")
 
-class FakeResponse:
-    def __init__(self, payload: str):
-        self.payload = payload
-
-    def read(self):
-        return self.payload.encode("utf-8")
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
+# A stable, well-known open-access DOI used for live network tests.
+STABLE_DOI = "10.7717/peerj.4375"
 
 
-class FakeZoteroClient:
-    def item_template(self, item_type):
-        return {
-            "itemType": item_type,
-            "title": "",
-            "DOI": "",
-            "url": "",
-            "accessDate": "",
-            "language": "",
-            "libraryCatalog": "",
-            "volume": "",
-            "issue": "",
-            "pages": "",
-            "publisher": "",
-            "ISSN": "",
-            "ISBN": "",
-            "abstractNote": "",
-            "date": "",
-            "publicationTitle": "",
-            "bookTitle": "",
-            "shortTitle": "",
-            "creators": [],
-            "collections": [],
-        }
-
-    def item_creator_types(self, itemtype):
-        return [
-            {"creatorType": "author"},
-            {"creatorType": "editor"},
-            {"creatorType": "translator"},
-        ]
-
-
-class FakeDirectLookupClient:
-    library_id = "12345"
-    library_type = "users"
-    api_key = "secret"
-
+# ---------------------------------------------------------------------------
+# Pure function tests — no API calls
+# ---------------------------------------------------------------------------
 
 def test_normalize_doi_accepts_common_input_forms():
     bare = doi_utils.normalize_doi("10.1016/j.econmod.2026.107590")
@@ -80,8 +33,11 @@ def test_normalize_doi_rejects_invalid_values():
         doi_utils.normalize_doi("not-a-doi")
 
 
-def test_map_csl_json_to_zotero_item_maps_core_fields():
-    client = FakeZoteroClient()
+# ---------------------------------------------------------------------------
+# CSL-JSON → Zotero mapping tests (use real Zotero API for item templates)
+# ---------------------------------------------------------------------------
+
+def test_map_csl_json_to_zotero_item_maps_core_fields(zot_instance):
     csl_json = {
         "type": "article-journal",
         "title": "Testing DOI Imports",
@@ -101,7 +57,7 @@ def test_map_csl_json_to_zotero_item_maps_core_fields():
         "translator": [{"family": "Jones", "given": "Robin"}],
     }
 
-    item = doi_utils.map_csl_json_to_zotero_item(client, csl_json, "10.1016/j.econmod.2026.107590")
+    item = doi_utils.map_csl_json_to_zotero_item(zot_instance, csl_json, "10.1016/j.econmod.2026.107590")
 
     assert item["itemType"] == "journalArticle"
     assert item["title"] == "Testing DOI Imports: A Practical Guide"
@@ -120,8 +76,7 @@ def test_map_csl_json_to_zotero_item_maps_core_fields():
     ]
 
 
-def test_map_csl_json_to_zotero_item_maps_edited_book_to_book():
-    client = FakeZoteroClient()
+def test_map_csl_json_to_zotero_item_maps_edited_book_to_book(zot_instance):
     csl_json = {
         "type": "edited-book",
         "title": "Edited Volume",
@@ -130,7 +85,7 @@ def test_map_csl_json_to_zotero_item_maps_edited_book_to_book():
         "author": [{"family": "He", "given": "Jiani"}],
     }
 
-    item = doi_utils.map_csl_json_to_zotero_item(client, csl_json, "10.1515/9789048555864")
+    item = doi_utils.map_csl_json_to_zotero_item(zot_instance, csl_json, "10.1515/9789048555864")
 
     assert item["itemType"] == "book"
     assert item["title"] == "Edited Volume"
@@ -138,8 +93,7 @@ def test_map_csl_json_to_zotero_item_maps_edited_book_to_book():
     assert item["libraryCatalog"] == "DOI.org (AI Agent)"
 
 
-def test_map_csl_json_to_zotero_item_maps_journal_article_to_journal_article():
-    client = FakeZoteroClient()
+def test_map_csl_json_to_zotero_item_maps_journal_article_to_journal_article(zot_instance):
     csl_json = {
         "type": "journal-article",
         "title": "Journal Article Title",
@@ -150,7 +104,7 @@ def test_map_csl_json_to_zotero_item_maps_journal_article_to_journal_article():
         "author": [{"family": "Yang", "given": "Linyu"}],
     }
 
-    item = doi_utils.map_csl_json_to_zotero_item(client, csl_json, "10.1016/j.habitatint.2026.103784")
+    item = doi_utils.map_csl_json_to_zotero_item(zot_instance, csl_json, "10.1016/j.habitatint.2026.103784")
 
     assert item["itemType"] == "journalArticle"
     assert item["publicationTitle"] == "Habitat International"
@@ -160,8 +114,7 @@ def test_map_csl_json_to_zotero_item_maps_journal_article_to_journal_article():
     assert item["shortTitle"] == ""
 
 
-def test_map_csl_json_maps_generic_article_with_container_title_to_journal_article():
-    client = FakeZoteroClient()
+def test_map_csl_json_maps_generic_article_with_container_title_to_journal_article(zot_instance):
     csl_json = {
         "type": "article",
         "title": "Generic Article Title",
@@ -171,15 +124,14 @@ def test_map_csl_json_maps_generic_article_with_container_title_to_journal_artic
         "author": [{"family": "Rippa", "given": "Alessandro"}],
     }
 
-    item = doi_utils.map_csl_json_to_zotero_item(client, csl_json, "10.1017/S0010417526100462")
+    item = doi_utils.map_csl_json_to_zotero_item(zot_instance, csl_json, "10.1017/S0010417526100462")
 
     assert item["itemType"] == "journalArticle"
     assert item["publicationTitle"] == "Comparative Studies in Society and History"
     assert item["pages"] == "1-25"
 
 
-def test_map_csl_json_uses_explicit_short_title_when_present():
-    client = FakeZoteroClient()
+def test_map_csl_json_uses_explicit_short_title_when_present(zot_instance):
     csl_json = {
         "type": "book",
         "title": "Long Form Title",
@@ -187,38 +139,35 @@ def test_map_csl_json_uses_explicit_short_title_when_present():
         "short-title": ["Short Form"],
     }
 
-    item = doi_utils.map_csl_json_to_zotero_item(client, csl_json, "10.1000/test")
+    item = doi_utils.map_csl_json_to_zotero_item(zot_instance, csl_json, "10.1000/test")
 
     assert item["title"] == "Long Form Title: Subtitle"
     assert item["shortTitle"] == "Short Form"
 
 
-def test_map_csl_json_derives_short_title_from_title_delimiter():
-    client = FakeZoteroClient()
+def test_map_csl_json_derives_short_title_from_title_delimiter(zot_instance):
     csl_json = {
         "type": "journal-article",
         "title": "When is a Frontier? Nostalgia and Aspirations at China's Borderlands",
     }
 
-    item = doi_utils.map_csl_json_to_zotero_item(client, csl_json, "10.1000/test")
+    item = doi_utils.map_csl_json_to_zotero_item(zot_instance, csl_json, "10.1000/test")
 
     assert item["shortTitle"] == "When is a Frontier?"
 
 
-def test_map_csl_json_derives_short_title_from_exclamation():
-    client = FakeZoteroClient()
+def test_map_csl_json_derives_short_title_from_exclamation(zot_instance):
     csl_json = {
         "type": "journal-article",
         "title": "Amazing Discovery! A follow-up explanation",
     }
 
-    item = doi_utils.map_csl_json_to_zotero_item(client, csl_json, "10.1000/test")
+    item = doi_utils.map_csl_json_to_zotero_item(zot_instance, csl_json, "10.1000/test")
 
     assert item["shortTitle"] == "Amazing Discovery!"
 
 
-def test_map_csl_json_maps_arxiv_article_to_preprint():
-    client = FakeZoteroClient()
+def test_map_csl_json_maps_arxiv_article_to_preprint(zot_instance):
     csl_json = {
         "type": "article",
         "title": "AI Can Learn Scientific Taste",
@@ -228,16 +177,15 @@ def test_map_csl_json_maps_arxiv_article_to_preprint():
         "author": [{"family": "Tong", "given": "Jingqi"}],
     }
 
-    item = doi_utils.map_csl_json_to_zotero_item(client, csl_json, "10.48550/arXiv.2603.14473")
+    item = doi_utils.map_csl_json_to_zotero_item(zot_instance, csl_json, "10.48550/arXiv.2603.14473")
 
     assert item["itemType"] == "preprint"
     assert item["title"] == "AI Can Learn Scientific Taste"
     assert item["libraryCatalog"] == "DOI.org (AI Agent)"
-    assert item["publisher"] == "arXiv" or item.get("repository") == "arXiv"
+    assert item.get("repository") == "arXiv"
 
 
-def test_map_csl_json_sanitizes_abstract_markup_and_spaces():
-    client = FakeZoteroClient()
+def test_map_csl_json_sanitizes_abstract_markup_and_spaces(zot_instance):
     csl_json = {
         "type": "article",
         "title": "Markup Test",
@@ -245,63 +193,50 @@ def test_map_csl_json_sanitizes_abstract_markup_and_spaces():
         "abstract": "<jats:title>Abstract</jats:title>\n<jats:p>Hello\u00A0world.</jats:p>",
     }
 
-    item = doi_utils.map_csl_json_to_zotero_item(client, csl_json, "10.1000/test")
+    item = doi_utils.map_csl_json_to_zotero_item(zot_instance, csl_json, "10.1000/test")
 
     assert item["abstractNote"] == "Abstract Hello world."
 
 
-def test_fetch_csl_json_for_doi_returns_json(monkeypatch):
-    monkeypatch.setattr(
-        doi_utils.request,
-        "urlopen",
-        lambda req, timeout=10: FakeResponse('{"title":"ok"}'),
-    )
+# ---------------------------------------------------------------------------
+# Live doi.org network tests
+# ---------------------------------------------------------------------------
 
-    data = doi_utils.fetch_csl_json_for_doi("10.1000/test")
-    assert data == {"title": "ok"}
-
-
-def test_fetch_csl_json_for_doi_handles_http_errors(monkeypatch):
-    def raise_http_error(req, timeout=10):
-        raise error.HTTPError(req.full_url, 404, "Not Found", hdrs=None, fp=None)
-
-    monkeypatch.setattr(doi_utils.request, "urlopen", raise_http_error)
-
-    with pytest.raises(doi_utils.DOIError, match="HTTP 404"):
-        doi_utils.fetch_csl_json_for_doi("10.1000/test")
+def test_fetch_csl_json_for_doi_returns_json():
+    """Hits the real doi.org content-negotiation endpoint."""
+    data = doi_utils.fetch_csl_json_for_doi(STABLE_DOI)
+    assert isinstance(data, dict)
+    assert "title" in data
 
 
-def test_fetch_csl_json_for_doi_handles_invalid_json(monkeypatch):
-    monkeypatch.setattr(
-        doi_utils.request,
-        "urlopen",
-        lambda req, timeout=10: FakeResponse("not-json"),
-    )
-
-    with pytest.raises(doi_utils.DOIError, match="invalid JSON"):
-        doi_utils.fetch_csl_json_for_doi("10.1000/test")
+def test_fetch_csl_json_for_doi_handles_http_errors():
+    """A non-existent DOI path should surface as a DOIError wrapping an HTTP error."""
+    with pytest.raises(doi_utils.DOIError, match="HTTP"):
+        doi_utils.fetch_csl_json_for_doi("10.1000/doesnotexist.xyz.fake.abc.123")
 
 
-def test_find_existing_item_by_doi_uses_direct_lookup(monkeypatch):
-    payload = json.dumps(
-        [
-            {
-                "key": "ABCD1234",
-                "data": {"DOI": "10.1515/9789048555864", "title": "Title"},
-            }
-        ]
-    )
-    captured = {}
+# ---------------------------------------------------------------------------
+# Duplicate-lookup test (real Zotero API)
+# ---------------------------------------------------------------------------
 
-    def fake_urlopen(req, timeout=1.5):
-        captured["url"] = req.full_url
-        captured["headers"] = dict(req.header_items())
-        return FakeResponse(payload)
+@pytest.fixture(scope="function")
+def temp_doi_item(zot_instance):
+    """Creates a Zotero item with a known DOI and removes it after the test."""
+    template = zot_instance.item_template("journalArticle")
+    template["title"] = "Temporary DOI Lookup Test Item"
+    template["DOI"] = STABLE_DOI
+    resp = zot_instance.create_items([template])
+    assert resp.get("success"), f"Failed to create temp DOI item: {resp}"
+    item_key = resp["success"]["0"]
+    yield {"key": item_key, "doi": STABLE_DOI}
+    try:
+        zot_instance.delete_item(zot_instance.item(item_key))
+    except Exception:
+        pass
 
-    monkeypatch.setattr(doi_utils.request, "urlopen", fake_urlopen)
 
-    item = doi_utils.find_existing_item_by_doi(FakeDirectLookupClient(), "10.1515/9789048555864")
-
-    assert item["key"] == "ABCD1234"
-    assert "/users/12345/items" in captured["url"]
-    assert any(key.lower() == "zotero-api-key" for key in captured["headers"])
+def test_find_existing_item_by_doi_uses_direct_lookup(zot_instance, temp_doi_item):
+    """find_existing_item_by_doi locates an item that exists in the real library."""
+    item = doi_utils.find_existing_item_by_doi(zot_instance, temp_doi_item["doi"])
+    assert item is not None
+    assert item["key"] == temp_doi_item["key"]

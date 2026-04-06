@@ -132,53 +132,32 @@ def cache_item_key_for_doi(zot_client: Any, normalized_doi: str, item_key: str |
     _save_doi_cache(cache)
 
 
-def find_existing_item_by_doi(zot_client: Any, normalized_doi: str, timeout: float = 1.5, limit: int = 10) -> dict[str, Any] | None:
+def find_existing_item_by_doi(
+    zot_client: Any,
+    normalized_doi: str,
+    page_size: int = 100,
+    max_items: int = 1000,
+) -> dict[str, Any] | None:
+    """Paginate through library items looking for one whose DOI matches normalized_doi.
+
+    The Zotero API's q-search does not index the DOI metadata field, so items
+    are fetched in batches ordered by most-recently-added and compared directly.
+    Searches up to max_items items before giving up.
     """
-    Best-effort duplicate lookup for a DOI.
-
-    Uses a direct Zotero Web API request with a short timeout to avoid the slower
-    default pyzotero search path blocking DOI imports for several seconds.
-    Falls back to zot_client.items() when the client does not expose the fields
-    needed to construct a direct API request, which keeps tests and mocks simple.
-    """
-    if not hasattr(zot_client, "library_id") or not hasattr(zot_client, "library_type"):
-        candidate_items = zot_client.items(q=normalized_doi, qmode="everything", limit=limit)
-        return _match_existing_item(candidate_items, normalized_doi)
-
-    library_type = getattr(zot_client, "library_type", "")
-    library_id = getattr(zot_client, "library_id", "")
-    api_path_map = {
-        "user": "users",
-        "users": "users",
-        "group": "groups",
-        "groups": "groups",
-    }
-    api_path = api_path_map.get(library_type)
-    if not api_path or not library_id:
-        return None
-
-    query = parse.urlencode(
-        {
-            "q": normalized_doi,
-            "qmode": "everything",
-            "limit": limit,
-        }
-    )
-    url = f"https://api.zotero.org/{api_path}/{library_id}/items?{query}"
-    headers = {"User-Agent": "pyzotero-cli/doi-import"}
-    api_key = getattr(zot_client, "api_key", None)
-    if api_key:
-        headers["Zotero-API-Key"] = api_key
-
-    req = request.Request(url, headers=headers)
-    try:
-        with request.urlopen(req, timeout=timeout) as response:
-            payload = response.read().decode("utf-8")
-        candidate_items = json.loads(payload)
-    except (TimeoutError, error.URLError, error.HTTPError, json.JSONDecodeError):
-        return None
-
-    return _match_existing_item(candidate_items, normalized_doi)
+    start = 0
+    checked = 0
+    while checked < max_items:
+        batch = zot_client.items(limit=page_size, start=start, sort="dateAdded", direction="desc")
+        if not batch:
+            break
+        match = _match_existing_item(batch, normalized_doi)
+        if match:
+            return match
+        checked += len(batch)
+        if len(batch) < page_size:
+            break
+        start += page_size
+    return None
 
 
 def map_csl_json_to_zotero_item(zot_client: Any, csl_json: dict[str, Any], doi: str) -> dict[str, Any]:

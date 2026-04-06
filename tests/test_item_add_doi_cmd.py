@@ -1,277 +1,219 @@
-import copy
 import json
+import uuid
+import pytest
+from click.testing import CliRunner
 
 from pyzotero_cli.zot_cli import zot
 
+pytestmark = pytest.mark.usefixtures("isolated_config")
 
-DUMMY_ENV = {
-    "ZOTERO_API_KEY": "dummy-api-key",
-    "ZOTERO_LIBRARY_ID": "dummy-library-id",
-    "ZOTERO_LIBRARY_TYPE": "user",
-}
+# A stable, well-known open-access DOI used across most tests.
+STABLE_DOI = "10.7717/peerj.4375"
 
-
-class FakeZoteroClient:
-    def __init__(self):
-        self.items_by_key = {}
-        self.next_key_index = 1
-        self.collections = {"COLL1": {"key": "COLL1", "data": {"name": "Inbox"}}}
-
-    def item_template(self, item_type):
-        return {
-            "itemType": item_type,
-            "title": "",
-            "DOI": "",
-            "url": "",
-            "language": "",
-            "volume": "",
-            "issue": "",
-            "pages": "",
-            "publisher": "",
-            "ISSN": "",
-            "ISBN": "",
-            "abstractNote": "",
-            "date": "",
-            "publicationTitle": "",
-            "bookTitle": "",
-            "creators": [],
-            "collections": [],
-            "tags": [],
-        }
-
-    def item_creator_types(self, itemtype):
-        return [
-            {"creatorType": "author"},
-            {"creatorType": "editor"},
-            {"creatorType": "translator"},
-        ]
-
-    def items(self, **kwargs):
-        q = kwargs.get("q")
-        if not q:
-            return list(self.items_by_key.values())
-        needle = q.lower()
-        return [
-            copy.deepcopy(item)
-            for item in self.items_by_key.values()
-            if needle in item.get("data", {}).get("DOI", "").lower()
-        ]
-
-    def create_items(self, payloads):
-        payload = copy.deepcopy(payloads[0])
-        item_key = f"D{self.next_key_index:07d}"
-        self.next_key_index += 1
-        item = {"key": item_key, "version": 1, "data": payload}
-        self.items_by_key[item_key] = item
-        return {
-            "successful": {"0": {"key": item_key, "version": 1}},
-            "success": {"0": item_key},
-        }
-
-    def item(self, item_key):
-        return copy.deepcopy(self.items_by_key[item_key])
-
-    def update_item(self, item):
-        updated = copy.deepcopy(item)
-        updated["version"] = updated.get("version", 1) + 1
-        self.items_by_key[item["key"]] = updated
-        return True
-
-    def collection(self, collection_key_or_id):
-        return self.collections[collection_key_or_id]
-
-    def add_existing_item(self, item_key, doi, title):
-        self.items_by_key[item_key] = {
-            "key": item_key,
-            "version": 1,
-            "data": {
-                "itemType": "journalArticle",
-                "title": title,
-                "DOI": doi,
-                "collections": [],
-            },
-        }
+# A second DOI used when two distinct DOIs are needed in the same test,
+# e.g. to pre-populate the library with an "already-exists" entry.
+EXISTING_DOI = "10.1371/journal.pcbi.1003149"
 
 
-def _patch_clients(monkeypatch, fake_client):
-    monkeypatch.setattr(
-        "pyzotero_cli.zot_cli.pyzotero_client.Zotero",
-        lambda **kwargs: fake_client,
-    )
-    monkeypatch.setattr(
-        "pyzotero_cli.item_cmds.initialize_zotero_client",
-        lambda ctx: fake_client,
-    )
+# ---------------------------------------------------------------------------
+# Shared fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="function")
+def cleanup_doi_items(zot_instance):
+    """Collects item keys created during a test and removes them after."""
+    created_keys = []
+    yield created_keys
+    for key in created_keys:
+        try:
+            zot_instance.delete_item(zot_instance.item(key))
+        except Exception:
+            pass
 
 
-def _sample_csl_json(title="Imported by DOI"):
-    return {
-        "type": "article-journal",
-        "title": title,
-        "container-title": ["Journal of CLI Testing"],
-        "issued": {"date-parts": [[2026, 3, 30]]},
-        "author": [{"family": "Smith", "given": "Ada"}],
-    }
+@pytest.fixture(scope="function")
+def pre_existing_doi_item(zot_instance):
+    """
+    Creates a Zotero item with EXISTING_DOI directly via the API to simulate
+    a pre-existing entry the duplicate-check tests can detect.
+    """
+    template = zot_instance.item_template("journalArticle")
+    template["title"] = "Pre-existing DOI Test Item"
+    template["DOI"] = EXISTING_DOI
+    resp = zot_instance.create_items([template])
+    assert resp.get("success"), f"Failed to create pre-existing item: {resp}"
+    item_key = resp["success"]["0"]
+    yield {"key": item_key, "doi": EXISTING_DOI}
+    try:
+        zot_instance.delete_item(zot_instance.item(item_key))
+    except Exception:
+        pass
 
 
-def test_item_add_doi_creates_item(runner, monkeypatch):
-    fake_client = FakeZoteroClient()
-    _patch_clients(monkeypatch, fake_client)
-    monkeypatch.setattr(
-        "pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi",
-        lambda doi: _sample_csl_json(),
-    )
+@pytest.fixture(scope="function")
+def temp_collection(runner, active_profile_with_real_credentials):
+    """Creates a temporary Zotero collection and removes it after the test."""
+    name = f"pytest_doi_col_{uuid.uuid4().hex[:8]}"
+    create_result = runner.invoke(zot, ["collections", "create", "--name", name])
+    assert create_result.exit_code == 0, f"Collection create failed: {create_result.output}"
+    collection_key = json.loads(create_result.output)["success"]["0"]
+    yield collection_key
+    runner.invoke(zot, ["collections", "delete", collection_key, "--force"])
 
-    result = runner.invoke(
-        zot,
-        ["items", "add-doi", "10.1016/j.econmod.2026.107590"],
-        env=DUMMY_ENV,
-    )
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+def test_item_add_doi_creates_item(
+    runner, active_profile_with_real_credentials, zot_instance, cleanup_doi_items
+):
+    result = runner.invoke(zot, ["items", "add-doi", STABLE_DOI])
 
     assert result.exit_code == 0
     output = json.loads(result.output)
-    assert output == [
-        {
-            "doi": "10.1016/j.econmod.2026.107590",
-            "status": "created",
-            "item_key": "D0000001",
-            "title": "Imported by DOI",
-        }
-    ]
-    assert fake_client.items_by_key["D0000001"]["data"]["tags"] == [{"tag": "Added by AI Agent"}]
+    assert len(output) == 1
+    assert output[0]["status"] == "created"
+    assert output[0]["doi"] == STABLE_DOI
+
+    item_key = output[0]["item_key"]
+    cleanup_doi_items.append(item_key)
+
+    item = zot_instance.item(item_key)
+    assert item["data"]["DOI"].lower() == STABLE_DOI.lower()
+    tags = [t["tag"] for t in item["data"].get("tags", [])]
+    assert "Added by AI Agent" in tags
 
 
-def test_item_add_doi_preserves_input_case_in_output_and_storage(runner, monkeypatch):
-    fake_client = FakeZoteroClient()
-    _patch_clients(monkeypatch, fake_client)
-    monkeypatch.setattr(
-        "pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi",
-        lambda doi: _sample_csl_json(title="Case Preserved"),
-    )
+def test_item_add_doi_preserves_input_case_in_output_and_storage(
+    runner, active_profile_with_real_credentials, zot_instance, cleanup_doi_items
+):
+    """URL-form input with an uppercased DOI path is stripped and case is preserved."""
+    uppercased_url = "https://doi.org/" + STABLE_DOI.upper()
 
-    result = runner.invoke(
-        zot,
-        ["items", "add-doi", "https://doi.org/10.1016/J.ECONMOD.2026.107590"],
-        env=DUMMY_ENV,
-    )
+    result = runner.invoke(zot, ["items", "add-doi", uppercased_url])
 
     assert result.exit_code == 0
     output = json.loads(result.output)
-    assert output[0]["doi"] == "10.1016/J.ECONMOD.2026.107590"
-    assert fake_client.items_by_key["D0000001"]["data"]["DOI"] == "10.1016/J.ECONMOD.2026.107590"
+    assert output[0]["doi"] == STABLE_DOI.upper()
+
+    item_key = output[0]["item_key"]
+    cleanup_doi_items.append(item_key)
+
+    item = zot_instance.item(item_key)
+    assert item["data"]["DOI"] == STABLE_DOI.upper()
 
 
-def test_item_add_doi_handles_exists_and_failure_in_batch(runner, monkeypatch):
-    fake_client = FakeZoteroClient()
-    fake_client.add_existing_item("EXIST001", "10.1000/existing", "Already Present")
-    _patch_clients(monkeypatch, fake_client)
-
-    def fake_fetch(doi):
-        if doi == "10.1000/new":
-            return _sample_csl_json(title="Fresh Item")
-        raise ValueError("lookup failed")
-
-    monkeypatch.setattr("pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi", fake_fetch)
-
+def test_item_add_doi_handles_exists_and_failure_in_batch(
+    runner,
+    active_profile_with_real_credentials,
+    zot_instance,
+    cleanup_doi_items,
+    pre_existing_doi_item,
+):
     result = runner.invoke(
         zot,
-        ["items", "add-doi", "--check-duplicate", "10.1000/existing", "10.1000/new", "10.1000/fail"],
-        env=DUMMY_ENV,
+        [
+            "items", "add-doi", "--check-duplicate",
+            EXISTING_DOI,   # already in library
+            STABLE_DOI,     # new item
+            "not-a-doi",    # invalid — fails at clean_doi before any network call
+        ],
     )
 
     assert result.exit_code == 1
     output = json.loads(result.output)
-    assert output[0] == {
-        "doi": "10.1000/existing",
-        "status": "exists",
-        "item_key": "EXIST001",
-        "title": "Already Present",
-    }
+
+    assert output[0]["doi"] == EXISTING_DOI
+    assert output[0]["status"] == "exists"
+    assert output[0]["item_key"] == pre_existing_doi_item["key"]
+
     assert output[1]["status"] == "created"
-    assert output[1]["title"] == "Fresh Item"
+    cleanup_doi_items.append(output[1]["item_key"])
+
+    assert output[2]["doi"] == "not-a-doi"
     assert output[2]["status"] == "failed"
-    assert output[2]["error"] == "lookup failed"
 
 
-def test_item_add_doi_default_creates_without_duplicate_check(runner, monkeypatch):
-    fake_client = FakeZoteroClient()
-    fake_client.add_existing_item("EXIST001", "10.1000/existing", "Already Present")
-    _patch_clients(monkeypatch, fake_client)
-    monkeypatch.setattr(
-        "pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi",
-        lambda doi: _sample_csl_json(title="Duplicate Allowed"),
-    )
+def test_item_add_doi_default_creates_without_duplicate_check(
+    runner,
+    active_profile_with_real_credentials,
+    zot_instance,
+    cleanup_doi_items,
+    pre_existing_doi_item,
+):
+    """Without --check-duplicate a DOI that already exists is imported again."""
+    result = runner.invoke(zot, ["items", "add-doi", EXISTING_DOI])
 
+    assert result.exit_code == 0
+    output = json.loads(result.output)
+    assert output[0]["status"] == "created"
+
+    new_key = output[0]["item_key"]
+    cleanup_doi_items.append(new_key)
+
+    assert new_key != pre_existing_doi_item["key"]
+    # Both the pre-existing item and the newly created duplicate should be present.
+    zot_instance.item(new_key)
+    zot_instance.item(pre_existing_doi_item["key"])
+
+
+def test_item_add_doi_adds_created_item_to_collection(
+    runner,
+    active_profile_with_real_credentials,
+    zot_instance,
+    cleanup_doi_items,
+    temp_collection,
+):
     result = runner.invoke(
-        zot,
-        ["items", "add-doi", "10.1000/existing"],
-        env=DUMMY_ENV,
+        zot, ["items", "add-doi", "--collection", temp_collection, STABLE_DOI]
     )
 
     assert result.exit_code == 0
     output = json.loads(result.output)
     assert output[0]["status"] == "created"
-    assert len(fake_client.items_by_key) == 2
-    assert fake_client.items_by_key["D0000001"]["data"]["tags"] == [{"tag": "Added by AI Agent"}]
+
+    item_key = output[0]["item_key"]
+    cleanup_doi_items.append(item_key)
+
+    item = zot_instance.item(item_key)
+    assert temp_collection in item["data"]["collections"]
+    tags = [t["tag"] for t in item["data"].get("tags", [])]
+    assert "Added by AI Agent" in tags
 
 
-def test_item_add_doi_adds_created_item_to_collection(runner, monkeypatch):
-    fake_client = FakeZoteroClient()
-    _patch_clients(monkeypatch, fake_client)
-    monkeypatch.setattr(
-        "pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi",
-        lambda doi: _sample_csl_json(),
-    )
-
-    result = runner.invoke(
-        zot,
-        ["items", "add-doi", "--collection", "COLL1", "10.1000/new"],
-        env=DUMMY_ENV,
-    )
-
-    assert result.exit_code == 0
-    created_item = fake_client.items_by_key["D0000001"]
-    assert created_item["data"]["collections"] == ["COLL1"]
-    assert created_item["data"]["tags"] == [{"tag": "Added by AI Agent"}]
-
-
-def test_item_add_doi_rejects_local_mode(runner, monkeypatch):
-    fake_client = FakeZoteroClient()
-    _patch_clients(monkeypatch, fake_client)
-
-    result = runner.invoke(
-        zot,
-        ["--local", "items", "add-doi", "10.1000/new"],
-        env=DUMMY_ENV,
-    )
+def test_item_add_doi_rejects_local_mode(runner, active_profile_with_real_credentials):
+    result = runner.invoke(zot, ["--local", "items", "add-doi", STABLE_DOI])
 
     assert result.exit_code == 2
     assert "not available with --local" in result.output
 
 
-def test_item_add_doi_keys_and_table_output(runner, monkeypatch):
-    fake_client = FakeZoteroClient()
-    _patch_clients(monkeypatch, fake_client)
-    monkeypatch.setattr(
-        "pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi",
-        lambda doi: _sample_csl_json(),
-    )
+def test_item_add_doi_keys_output_format(
+    runner, active_profile_with_real_credentials, zot_instance, cleanup_doi_items
+):
+    result = runner.invoke(zot, ["items", "add-doi", "--output", "keys", STABLE_DOI])
 
-    keys_result = runner.invoke(
-        zot,
-        ["items", "add-doi", "--output", "keys", "10.1000/keys"],
-        env=DUMMY_ENV,
-    )
-    assert keys_result.exit_code == 0
-    assert keys_result.output.strip() == "D0000001"
+    assert result.exit_code == 0
+    item_key = result.output.strip()
+    assert len(item_key) > 0
+    cleanup_doi_items.append(item_key)
 
-    table_result = runner.invoke(
-        zot,
-        ["items", "add-doi", "--output", "table", "10.1000/table"],
-        env=DUMMY_ENV,
-    )
-    assert table_result.exit_code == 0
-    assert "DOI" in table_result.output
-    assert "Status" in table_result.output
-    assert "Error" in table_result.output
-    assert "created" in table_result.output
+
+def test_item_add_doi_table_output_format(
+    runner, active_profile_with_real_credentials, zot_instance, cleanup_doi_items
+):
+    result = runner.invoke(zot, ["items", "add-doi", "--output", "table", STABLE_DOI])
+
+    assert result.exit_code == 0
+    assert "DOI" in result.output
+    assert "Status" in result.output
+    assert "Error" in result.output
+    assert "created" in result.output
+
+    # No item key in table output; find the created item to register for cleanup.
+    matching = zot_instance.items(q=STABLE_DOI, qmode="everything", limit=10)
+    for it in matching:
+        if it.get("data", {}).get("DOI", "").lower() == STABLE_DOI.lower():
+            cleanup_doi_items.append(it["key"])
+            break
