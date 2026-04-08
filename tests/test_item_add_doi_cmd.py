@@ -80,6 +80,7 @@ def temp_collection(runner, active_profile_with_real_credentials):
 # Tests
 # ---------------------------------------------------------------------------
 
+@pytest.mark.live
 def test_item_add_doi_creates_item(
     runner, active_profile_with_real_credentials, zot_instance, cleanup_doi_items
 ):
@@ -100,6 +101,7 @@ def test_item_add_doi_creates_item(
     assert "Added by AI Agent" in tags
 
 
+@pytest.mark.live
 def test_item_add_doi_preserves_input_case_in_output_and_storage(
     runner, active_profile_with_real_credentials, zot_instance, cleanup_doi_items
 ):
@@ -119,6 +121,7 @@ def test_item_add_doi_preserves_input_case_in_output_and_storage(
     assert item["data"]["DOI"] == STABLE_DOI.upper()
 
 
+@pytest.mark.live
 def test_item_add_doi_handles_exists_and_failure_in_batch(
     runner,
     active_profile_with_real_credentials,
@@ -151,6 +154,7 @@ def test_item_add_doi_handles_exists_and_failure_in_batch(
     assert output[2]["status"] == "failed"
 
 
+@pytest.mark.live
 def test_item_add_doi_default_creates_without_duplicate_check(
     runner,
     active_profile_with_real_credentials,
@@ -174,6 +178,7 @@ def test_item_add_doi_default_creates_without_duplicate_check(
     zot_instance.item(pre_existing_doi_item["key"])
 
 
+@pytest.mark.live
 def test_item_add_doi_adds_created_item_to_collection(
     runner,
     active_profile_with_real_credentials,
@@ -198,6 +203,7 @@ def test_item_add_doi_adds_created_item_to_collection(
     assert "Added by AI Agent" in tags
 
 
+@pytest.mark.live
 def test_item_add_doi_rejects_local_mode(runner, active_profile_with_real_credentials):
     result = runner.invoke(zot, ["--local", "items", "add-doi", STABLE_DOI])
 
@@ -205,6 +211,7 @@ def test_item_add_doi_rejects_local_mode(runner, active_profile_with_real_creden
     assert "not available with --local" in result.output
 
 
+@pytest.mark.live
 def test_item_add_doi_keys_output_format(
     runner, active_profile_with_real_credentials, zot_instance, cleanup_doi_items
 ):
@@ -216,6 +223,7 @@ def test_item_add_doi_keys_output_format(
     cleanup_doi_items.append(item_key)
 
 
+@pytest.mark.live
 def test_item_add_doi_table_output_format(
     runner, active_profile_with_real_credentials, zot_instance, cleanup_doi_items
 ):
@@ -233,3 +241,72 @@ def test_item_add_doi_table_output_format(
         if it.get("data", {}).get("DOI", "").lower() == STABLE_DOI.lower():
             cleanup_doi_items.append(it["key"])
             break
+
+
+# ── Mock tests (no API credentials required) ─────────────────────────────
+
+from unittest.mock import patch as _mock_patch
+
+MOCK_CSL_JSON = {
+    "type": "article-journal",
+    "title": "Mock DOI Article",
+    "container-title": ["Journal of Mock Tests"],
+    "issued": {"date-parts": [[2026, 1, 15]]},
+    "author": [{"family": "Mock", "given": "Author"}],
+}
+
+
+def test_mock_add_doi_single(runner, mock_active_profile, mock_zotero_patched):
+    """Test items add-doi creates item from DOI."""
+    with _mock_patch("pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi", return_value=MOCK_CSL_JSON):
+        result = runner.invoke(zot, ['items', 'add-doi', '10.1000/mock.test'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["status"] == "created"
+    assert data[0]["item_key"] is not None
+
+
+def test_mock_add_doi_multiple(runner, mock_active_profile, mock_zotero_patched):
+    """Test items add-doi with multiple DOIs."""
+    with _mock_patch("pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi", return_value=MOCK_CSL_JSON):
+        result = runner.invoke(zot, ['items', 'add-doi', '10.1000/mock.one', '10.1000/mock.two'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert len(data) == 2
+    assert all(r["status"] == "created" for r in data)
+
+
+def test_mock_add_doi_keys_output(runner, mock_active_profile, mock_zotero_patched):
+    """Test items add-doi --output keys."""
+    with _mock_patch("pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi", return_value=MOCK_CSL_JSON):
+        result = runner.invoke(zot, ['items', 'add-doi', '10.1000/mock.test', '--output', 'keys'])
+    assert result.exit_code == 0
+    lines = result.output.strip().split('\n')
+    assert len(lines) >= 1
+    assert lines[0].startswith("MOCK")
+
+
+def test_mock_add_doi_table_output(runner, mock_active_profile, mock_zotero_patched):
+    """Test items add-doi --output table."""
+    with _mock_patch("pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi", return_value=MOCK_CSL_JSON):
+        result = runner.invoke(zot, ['items', 'add-doi', '10.1000/mock.test', '--output', 'table'])
+    assert result.exit_code == 0
+    assert "created" in result.output
+
+
+def test_mock_add_doi_local_rejected(runner, mock_active_profile, mock_zotero_patched):
+    """Test items add-doi rejects --local mode."""
+    result = runner.invoke(zot, ['--local', 'items', 'add-doi', '10.1000/mock.test'])
+    assert result.exit_code != 0
+    assert "not available with --local" in result.output
+
+
+def test_mock_add_doi_with_collection(runner, mock_active_profile, mock_zotero_patched):
+    """Test items add-doi --collection assigns to collection."""
+    with _mock_patch("pyzotero_cli.item_cmds.doi_utils.fetch_csl_json_for_doi", return_value=MOCK_CSL_JSON):
+        result = runner.invoke(zot, ['items', 'add-doi', '10.1000/mock.test', '--collection', 'N7W92H48'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data[0]["status"] == "created"

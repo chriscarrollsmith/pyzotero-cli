@@ -1,0 +1,20 @@
+{
+    "key": "fake_api_key_12345",
+    "userID": 12345,
+    "username": "mock_user",
+    "displayName": "Mock User",
+    "access": {
+        "user": {
+            "library": true,
+            "files": true,
+            "notes": true,
+            "write": true
+        },
+        "groups": {
+            "all": {
+                "library": true,
+                "write": true
+            }
+        }
+    }
+}
