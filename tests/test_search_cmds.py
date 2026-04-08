@@ -47,6 +47,7 @@ def temp_saved_search(real_api_credentials, request):
 
 # --- Test List Searches ---
 
+@pytest.mark.live
 def test_list_searches_success_table(runner: CliRunner, active_profile_with_real_credentials, temp_saved_search):
     """Test successful listing of saved searches in table format (explicitly specified)."""
     # temp_saved_search ensures there's at least one search to list
@@ -60,6 +61,7 @@ def test_list_searches_success_table(runner: CliRunner, active_profile_with_real
     assert result.exit_code == 0, f"CLI Error: {result.output}"
     assert temp_saved_search['key'] in result.output
 
+@pytest.mark.live
 def test_list_searches_success_json(runner: CliRunner, active_profile_with_real_credentials, temp_saved_search):
     """Test successful listing of saved searches in JSON format (default)."""
     
@@ -89,6 +91,7 @@ def test_list_searches_success_json(runner: CliRunner, active_profile_with_real_
 
 # --- Test Create Search ---
 
+@pytest.mark.live
 def test_create_search_success_json_string(runner: CliRunner, active_profile_with_real_credentials, real_api_credentials, request):
     """Test successful creation of a saved search using a JSON string with default JSON output."""
     search_name = f"zotcli_test_create_str_{uuid.uuid4()}"
@@ -138,6 +141,7 @@ def test_create_search_success_json_string(runner: CliRunner, active_profile_wit
     assert found_search_raw is not None, f"Search '{search_name}' not found via API after creation. Raw searches: {all_searches_raw}"
     assert found_search_raw.get('data', {}).get('conditions') is not None # Basic check on structure
 
+@pytest.mark.live
 def test_create_search_success_table_output(runner: CliRunner, active_profile_with_real_credentials, real_api_credentials, request):
     """Test successful creation of a saved search with explicit table output format."""
     search_name = f"zotcli_test_create_table_{uuid.uuid4()}"
@@ -173,6 +177,7 @@ def test_create_search_success_table_output(runner: CliRunner, active_profile_wi
     assert found_search_raw.get('data', {}).get('conditions') is not None # Basic check on structure
     created_search_key = found_search_raw['key'] # Store key for cleanup
 
+@pytest.mark.live
 def test_create_search_success_json_file(runner: CliRunner, active_profile_with_real_credentials, real_api_credentials, tmp_path, request):
     """Test successful creation of a saved search using a JSON file with default JSON output."""
     search_name = f"zotcli_test_create_file_{uuid.uuid4()}"
@@ -226,6 +231,7 @@ def test_create_search_success_json_file(runner: CliRunner, active_profile_with_
 
 # --- Tests for Invalid Input (should not hit API) ---
 
+@pytest.mark.live
 def test_create_search_invalid_json_input(runner: CliRunner, active_profile_with_real_credentials):
     """Test create search with invalid JSON input (not file or string)."""
     result = runner.invoke(cli_entry_point, [
@@ -235,6 +241,7 @@ def test_create_search_invalid_json_input(runner: CliRunner, active_profile_with
     assert result.exit_code == 2 # Usage error should return exit code 2
     assert "Error: Conditions JSON is not valid JSON or a findable file" in result.output
 
+@pytest.mark.live
 def test_create_search_malformed_json_string(runner: CliRunner, active_profile_with_real_credentials):
     """Test create search with malformed JSON string."""
     result = runner.invoke(cli_entry_point, [
@@ -244,6 +251,7 @@ def test_create_search_malformed_json_string(runner: CliRunner, active_profile_w
     assert result.exit_code == 2 # Usage error should return exit code 2
     assert "Error: Conditions JSON is not valid JSON or a findable file" in result.output
 
+@pytest.mark.live
 def test_create_search_json_not_list(runner: CliRunner, active_profile_with_real_credentials):
     """Test create search where JSON is not a list."""
     result = runner.invoke(cli_entry_point, [
@@ -253,6 +261,7 @@ def test_create_search_json_not_list(runner: CliRunner, active_profile_with_real
     assert result.exit_code == 2 # Usage error should return exit code 2
     assert "Error: Conditions JSON must be a list of condition objects." in result.output
 
+@pytest.mark.live
 def test_create_search_invalid_condition_structure(runner: CliRunner, active_profile_with_real_credentials):
     """Test create search with missing keys in a condition object."""
     invalid_conditions = json.dumps([{"condition": "title", "operator": "is"}]) # Missing 'value'
@@ -266,6 +275,7 @@ def test_create_search_invalid_condition_structure(runner: CliRunner, active_pro
 
 # --- Test Delete Search ---
 
+@pytest.mark.live
 def test_delete_search_success_single_force(runner: CliRunner, active_profile_with_real_credentials, temp_saved_search, real_api_credentials):
     """Test successful deletion of a single search with --force."""
     search_key = temp_saved_search['key']
@@ -281,6 +291,7 @@ def test_delete_search_success_single_force(runner: CliRunner, active_profile_wi
     assert not any(s.get('key') == search_key for s in searches), f"Search '{search_key}' still found via API after forced deletion."
 
 
+@pytest.mark.live
 def test_delete_search_success_multiple_force(runner: CliRunner, active_profile_with_real_credentials, real_api_credentials):
     """Test successful deletion of multiple searches with --force."""
     
@@ -328,6 +339,7 @@ def test_delete_search_success_multiple_force(runner: CliRunner, active_profile_
                 pass  # Best effort cleanup
 
 
+@pytest.mark.live
 def test_delete_search_success_confirmation_yes(runner: CliRunner, active_profile_with_real_credentials, temp_saved_search, real_api_credentials):
     """Test successful deletion with user confirmation (yes)."""
     search_key = temp_saved_search['key']
@@ -344,6 +356,7 @@ def test_delete_search_success_confirmation_yes(runner: CliRunner, active_profil
     assert not any(s.get('key') == search_key for s in searches), f"Search '{search_key}' still found via API after confirmed deletion."
 
 
+@pytest.mark.live
 def test_delete_search_confirmation_no(runner: CliRunner, active_profile_with_real_credentials, temp_saved_search, real_api_credentials):
     """Test deletion cancellation with user confirmation (no)."""
     search_key = temp_saved_search['key']
@@ -361,10 +374,66 @@ def test_delete_search_confirmation_no(runner: CliRunner, active_profile_with_re
     assert any(s.get('key') == search_key for s in searches), f"Search '{search_key}' was deleted unexpectedly after answering 'n'."
 
 
+@pytest.mark.live
 def test_delete_search_no_keys_provided(runner: CliRunner, active_profile_with_real_credentials):
     """Test delete search command when no keys are provided."""
     # Don't need API credentials for this CLI validation test
     result = runner.invoke(cli_entry_point, ['search', 'delete']) 
     
     assert result.exit_code != 0 # Should be a usage error (Click typically exits 2 for UsageError)
-    assert "Error: Missing argument 'SEARCH_KEYS...'" in result.output 
+    assert "Error: Missing argument 'SEARCH_KEYS...'" in result.output
+
+
+# ── Mock tests ────────────────────────────────────────────────────────────
+
+def test_mock_list_searches_json(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(cli_entry_point, ['search', 'list'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+def test_mock_create_search_invalid_json(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(cli_entry_point, ['search', 'create', '--name', 'Bad', '--conditions-json', 'not_json'])
+    assert result.exit_code == 2
+    assert "Error: Conditions JSON is not valid JSON or a findable file" in result.output
+
+def test_mock_delete_search_no_keys(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(cli_entry_point, ['search', 'delete'])
+    assert result.exit_code != 0
+
+def test_mock_create_search_success(runner, mock_active_profile, mock_zotero_patched):
+    conditions = json.dumps([{"condition": "title", "operator": "contains", "value": "test"}])
+    result = runner.invoke(cli_entry_point, [
+        'search', 'create', '--name', 'Mock Search', '--conditions-json', conditions
+    ])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data.get('name') == 'Mock Search'
+    assert data.get('status') == 'created successfully'
+    assert 'key' in data
+
+def test_mock_create_search_table_output(runner, mock_active_profile, mock_zotero_patched):
+    conditions = json.dumps([{"condition": "tag", "operator": "is", "value": "test"}])
+    result = runner.invoke(cli_entry_point, [
+        'search', 'create', '--name', 'Table Search', '--conditions-json', conditions, '--output', 'table'
+    ])
+    assert result.exit_code == 0
+    assert "Table Search" in result.output
+    assert "created successfully" in result.output
+
+def test_mock_delete_search_force(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(cli_entry_point, ['search', 'delete', 'SRCH0001', '--force'])
+    assert result.exit_code == 0
+    assert "Successfully deleted saved search(es):" in result.output
+    assert "SRCH0001" in result.output
+
+def test_mock_delete_search_confirm_yes(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(cli_entry_point, ['search', 'delete', 'SRCH0001'], input='y')
+    assert result.exit_code == 0
+    assert "Are you sure" in result.output
+    assert "Successfully deleted" in result.output
+
+def test_mock_delete_search_confirm_no(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(cli_entry_point, ['search', 'delete', 'SRCH0001'], input='n')
+    assert result.exit_code == 1
+    assert "Aborted!" in result.output

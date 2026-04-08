@@ -1,0 +1,17 @@
+[{
+    "key": "SRCH0001",
+    "version": 1,
+    "library": {
+        "type": "user",
+        "id": 12345,
+        "name": "Mock Library"
+    },
+    "data": {
+        "key": "SRCH0001",
+        "version": 1,
+        "name": "Mock Saved Search",
+        "conditions": [
+            {"condition": "title", "operator": "contains", "value": "test"}
+        ]
+    }
+}]
