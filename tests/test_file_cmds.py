@@ -40,7 +40,7 @@ def temp_item_with_real_attachment(zot_instance, temp_parent_item, temp_local_fi
 
     resp_create = zot_instance.create_items([template])
     if not resp_create or 'success' not in resp_create or not resp_create['success'] or '0' not in resp_create['success']:
-        pytest.fail(f"Failed to create attachment item via create_items: {resp_create}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to create attachment item via create_items: {resp_create}")
         
     real_attachment_key = resp_create['success']['0']
     print(f"Created attachment item {real_attachment_key}, now uploading file...") # Debugging
@@ -52,11 +52,11 @@ def temp_item_with_real_attachment(zot_instance, temp_parent_item, temp_local_fi
         # Fetch the created item to get its full structure including version
         attachment_item_dict = zot_instance.item(real_attachment_key)
         if not attachment_item_dict:
-             pytest.fail(f"Failed to fetch created attachment item {real_attachment_key} after creation.")  # ty:ignore[invalid-argument-type]
+             pytest.fail(f"Failed to fetch created attachment item {real_attachment_key} after creation.")
         # Assuming .item() returns the item dict directly, not a list of one item
         attachment_item_data = attachment_item_dict['data'] 
     except Exception as e:
-        pytest.fail(f"Failed to fetch created attachment item {real_attachment_key}: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to fetch created attachment item {real_attachment_key}: {e}")
         
     # Prepare for upload_attachments: list of dicts, 'filename' needs to be local path
     # The dict should be the 'data' part of the item structure.
@@ -75,7 +75,7 @@ def temp_item_with_real_attachment(zot_instance, temp_parent_item, temp_local_fi
                    ('unchanged' in resp_upload and any(item.get('key') == real_attachment_key for item in resp_upload['unchanged']))
 
     if not (is_successful or is_unchanged):
-         pytest.fail(f"Failed to upload file content for attachment {real_attachment_key}: {resp_upload}")  # ty:ignore[invalid-argument-type]
+         pytest.fail(f"Failed to upload file content for attachment {real_attachment_key}: {resp_upload}")
          
     print(f"Successfully uploaded/verified file content for {real_attachment_key}") # Debugging
 
@@ -95,7 +95,7 @@ def temp_empty_attachment(zot_instance, temp_parent_item):
 
     resp = zot_instance.create_items([template])
     if not resp['success'] or '0' not in resp['success']:
-        pytest.fail(f"Failed to create empty attachment item: {resp}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to create empty attachment item: {resp}")
     
     attachment_key = resp['success']['0']
     print(f"Created temp empty attachment: {attachment_key} under parent {parent_key}") # Debugging
@@ -107,6 +107,7 @@ def temp_empty_attachment(zot_instance, temp_parent_item):
 
 # --- Test Functions ---
 
+@pytest.mark.live
 def test_file_download_to_dir(runner, active_profile_with_real_credentials, temp_item_with_real_attachment, tmp_path):
     """Test downloading a file attachment to a specified directory."""
     _parent_key, attachment_key = temp_item_with_real_attachment
@@ -130,6 +131,7 @@ def test_file_download_to_dir(runner, active_profile_with_real_credentials, temp
     assert expected_file.read_text() == "This is a test file for Zotero attachment uploads."
 
 
+@pytest.mark.live
 def test_file_download_to_file(runner, active_profile_with_real_credentials, temp_item_with_real_attachment, tmp_path):
     """Test downloading a file attachment to a specific file path."""
     _parent_key, attachment_key = temp_item_with_real_attachment
@@ -148,6 +150,7 @@ def test_file_download_to_file(runner, active_profile_with_real_credentials, tem
     assert output_file.is_file()
     assert output_file.read_text() == "This is a test file for Zotero attachment uploads."
 
+@pytest.mark.live
 def test_file_download_invalid_key(runner, active_profile_with_real_credentials, temp_parent_item, tmp_path):
     """Test downloading using a parent item key instead of an attachment key."""
     parent_key = temp_parent_item # This is a note item, not an attachment
@@ -166,6 +169,7 @@ def test_file_download_invalid_key(runner, active_profile_with_real_credentials,
     assert "'filename'" in result.stderr
 
 
+@pytest.mark.live
 def test_file_upload_single(runner, active_profile_with_real_credentials, temp_parent_item, temp_local_file, zot_instance):
     """Test uploading a single file attachment."""
     parent_key = temp_parent_item
@@ -192,6 +196,7 @@ def test_file_upload_single(runner, active_profile_with_real_credentials, temp_p
     assert children[0]['data']['linkMode'] == 'imported_file'
 
 
+@pytest.mark.live
 def test_file_upload_single_with_filename(runner, active_profile_with_real_credentials, temp_parent_item, temp_local_file, zot_instance):
     """Test uploading a single file attachment with a custom Zotero filename."""
     parent_key = temp_parent_item
@@ -220,6 +225,7 @@ def test_file_upload_single_with_filename(runner, active_profile_with_real_crede
     assert children[0]['data']['title'] == custom_name 
 
 
+@pytest.mark.live
 def test_file_upload_multiple(runner, active_profile_with_real_credentials, temp_parent_item, temp_local_files, zot_instance):
     """Test uploading multiple file attachments."""
     parent_key = temp_parent_item
@@ -249,6 +255,7 @@ def test_file_upload_multiple(runner, active_profile_with_real_credentials, temp
     assert filenames == ["test_attachment_1.txt", "test_attachment_2.pdf"]
 
 
+@pytest.mark.live
 def test_file_upload_multiple_with_filename_warning(runner, active_profile_with_real_credentials, temp_parent_item, temp_local_files):
     """Test that using --filename with multiple files generates a warning."""
     parent_key = temp_parent_item
@@ -274,6 +281,7 @@ def test_file_upload_multiple_with_filename_warning(runner, active_profile_with_
             "File unchanged on server: test_attachment_2.pdf" in result.stdout)
 
 
+@pytest.mark.live
 def test_file_upload_no_files_specified(runner, active_profile_with_real_credentials):
     """Test that upload command with no files specified exits with usage error code 2."""
     result = runner.invoke(zot, ['files', 'upload'])
@@ -287,6 +295,7 @@ def test_file_upload_no_files_specified(runner, active_profile_with_real_credent
     assert "Try 'zot files upload --help' for help" in result.stderr
 
 
+@pytest.mark.live
 def test_file_upload_batch(runner, active_profile_with_real_credentials, temp_parent_item, temp_empty_attachment, temp_local_files, tmp_path, zot_instance):
     """Test batch uploading files using a JSON manifest."""
     parent_key_for_new = temp_parent_item
@@ -350,7 +359,7 @@ def test_file_upload_batch(runner, active_profile_with_real_credentials, temp_pa
         assert len(file_content_new) > 0
         assert "Content for file 1." in file_content_new.decode('utf-8', errors='ignore')
     except Exception as e:
-        pytest.fail(f"Failed to retrieve file content for newly created batch attachment {new_attach['key']}: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to retrieve file content for newly created batch attachment {new_attach['key']}: {e}")
 
     # 2. Check the existing attachment that was updated
     existing_attach_updated = zot_instance.item(existing_attachment_key)
@@ -362,4 +371,46 @@ def test_file_upload_batch(runner, active_profile_with_real_credentials, temp_pa
         assert len(file_content_existing) > 0
         assert "Content for file 2" in file_content_existing.decode('utf-8', errors='ignore')
     except Exception as e:
-        pytest.fail(f"Failed to retrieve file content for existing batch attachment {existing_attachment_key}: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to retrieve file content for existing batch attachment {existing_attachment_key}: {e}")
+
+
+# ── Mock tests (no API credentials required) ─────────────────────────────
+
+def test_mock_file_download_to_dir(runner, mock_active_profile, mock_zotero_patched, tmp_path):
+    """Test downloading a file attachment to a directory with mock."""
+    output_dir = tmp_path / "downloads"
+    output_dir.mkdir()
+    result = runner.invoke(zot, ['files', 'download', 'SOMEKEY', '--output', str(output_dir)])
+    assert result.exit_code == 0
+    assert "File downloaded to:" in result.stdout
+
+def test_mock_file_download_to_file(runner, mock_active_profile, mock_zotero_patched, tmp_path):
+    """Test downloading a file attachment to a specific file path with mock."""
+    output_file = tmp_path / "downloaded.txt"
+    result = runner.invoke(zot, ['files', 'download', 'SOMEKEY', '--output', str(output_file)])
+    assert result.exit_code == 0
+    assert f"File downloaded to:" in result.stdout
+    assert output_file.exists()
+
+def test_mock_file_upload_single(runner, mock_active_profile, mock_zotero_patched, tmp_path):
+    """Test uploading a single file with mock."""
+    test_file = tmp_path / "test_upload.txt"
+    test_file.write_text("Mock file content")
+    result = runner.invoke(zot, ['files', 'upload', str(test_file), '--parent-item-id', 'X42A7DEE'])
+    assert result.exit_code == 0
+    assert "Upload results:" in result.stdout
+
+def test_mock_file_upload_multiple(runner, mock_active_profile, mock_zotero_patched, tmp_path):
+    """Test uploading multiple files with mock."""
+    file1 = tmp_path / "file1.txt"
+    file2 = tmp_path / "file2.txt"
+    file1.write_text("Content 1")
+    file2.write_text("Content 2")
+    result = runner.invoke(zot, ['files', 'upload', str(file1), str(file2), '--parent-item-id', 'X42A7DEE'])
+    assert result.exit_code == 0
+    assert "Upload results:" in result.stdout
+
+def test_mock_file_upload_no_files(runner, mock_active_profile, mock_zotero_patched):
+    """Test upload with no files gives usage error."""
+    result = runner.invoke(zot, ['files', 'upload'])
+    assert result.exit_code == 2

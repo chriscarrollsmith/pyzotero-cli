@@ -5,6 +5,7 @@ from pyzotero_cli.zot_cli import zot # Import the main command group
 import uuid
 
 # Test for `zot items list`
+@pytest.mark.live
 def test_item_list_default_json_output(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items list` returns JSON by default and is not empty."""
     result = runner.invoke(zot, ['items', 'list', '--limit', '1'])
@@ -17,8 +18,9 @@ def test_item_list_default_json_output(runner: CliRunner, active_profile_with_re
         # If the library has items:
         # assert len(data) > 0, "Should return at least one item if library is not empty and limit is applied."
     except json.JSONDecodeError:
-        pytest.fail("Output was not valid JSON.")  # ty:ignore[invalid-argument-type]
+        pytest.fail("Output was not valid JSON.")
 
+@pytest.mark.live
 def test_item_list_top_flag(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items list --top`."""
     result = runner.invoke(zot, ['items', 'list', '--top', '--limit', '1'])
@@ -27,14 +29,16 @@ def test_item_list_top_flag(runner: CliRunner, active_profile_with_real_credenti
         data = json.loads(result.output)
         assert isinstance(data, list)
     except json.JSONDecodeError:
-        pytest.fail("Output was not valid JSON for --top flag.")  # ty:ignore[invalid-argument-type]
+        pytest.fail("Output was not valid JSON for --top flag.")
 
+@pytest.mark.live
 def test_item_list_output_table(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items list --output table`."""
     result = runner.invoke(zot, ['items', 'list', '--limit', '1', '--output', 'table'])
     assert result.exit_code == 0
     assert "Key" in result.output or "Title" in result.output or "No data to display." in result.output # Check for table headers or empty message
 
+@pytest.mark.live
 def test_item_list_output_keys(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test `zot items list --output keys`."""
     # Ensure there's at least one item to get a key from
@@ -54,6 +58,7 @@ def test_item_list_output_keys(runner: CliRunner, zot_instance, active_profile_w
         assert result.output.strip() == "" or len(output_lines[0]) == 8, "Output is empty or a key"
 
 # Test for `zot items get`
+@pytest.mark.live
 def test_item_get_single_item(runner: CliRunner, temp_item_with_tags, active_profile_with_real_credentials):
     """Test `zot items get <item_key>` for an existing item."""
     item_key, _ = temp_item_with_tags # This fixture creates an item
@@ -69,8 +74,9 @@ def test_item_get_single_item(runner: CliRunner, temp_item_with_tags, active_pro
         # So, if 'results' is a dict, format_data_for_output handles it.
         assert data['key'] == item_key, "Returned item key should match the requested key."
     except json.JSONDecodeError:
-        pytest.fail("Output was not valid JSON for item get.")  # ty:ignore[invalid-argument-type]
+        pytest.fail("Output was not valid JSON for item get.")
 
+@pytest.mark.live
 def test_item_get_non_existent_item(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items get <item_key>` for a non-existent item."""
     non_existent_key = "NONEXIST" # A key that is unlikely to exist
@@ -83,6 +89,7 @@ def test_item_get_non_existent_item(runner: CliRunner, active_profile_with_real_
     assert "Response: Not found" in result.output
 
 # Test for `zot items create`, `delete`
+@pytest.mark.live
 def test_item_create_and_delete(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test creating an item and then deleting it."""
     item_title = f"Test Book Created by CLI - {uuid.uuid4()}" # Use uuid for uniqueness
@@ -113,7 +120,7 @@ def test_item_create_and_delete(runner: CliRunner, zot_instance, active_profile_
         created_item_key = create_data['success']['0']
         assert created_item_key is not None
     except (json.JSONDecodeError, KeyError, AssertionError) as e:
-        pytest.fail(f"Failed to parse create item response or find key: {e}\nOutput: {create_result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to parse create item response or find key: {e}\nOutput: {create_result.output}")
 
     # Verify item exists using zot_instance (direct API call)
     try:
@@ -137,7 +144,7 @@ def test_item_create_and_delete(runner: CliRunner, zot_instance, active_profile_
                         zot_instance.delete_item(item_to_delete)
             except Exception:
                 pass # Ignore cleanup error if primary assertion fails
-        pytest.fail(f"Failed to verify created item {created_item_key} via API: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to verify created item {created_item_key} via API: {e}")
 
     # Delete item
     delete_result = runner.invoke(zot, ['items', 'delete', created_item_key, '--force'])
@@ -149,7 +156,7 @@ def test_item_create_and_delete(runner: CliRunner, zot_instance, active_profile_
         assert len(delete_data) == 1
         assert delete_data[0].get(created_item_key) == "Successfully deleted"
     except (json.JSONDecodeError, IndexError, KeyError, AssertionError) as e:
-        pytest.fail(f"Failed to parse delete response or verify success: {e}\nOutput: {delete_result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to parse delete response or verify success: {e}\nOutput: {delete_result.output}")
 
     # Verify item is deleted using zot_instance
     try:
@@ -165,10 +172,11 @@ def test_item_create_and_delete(runner: CliRunner, zot_instance, active_profile_
         if "404" in str(e) and "Item does not exist" in str(e):
             pass  # This is expected behavior
         else:
-            pytest.fail(f"Error when checking if item {created_item_key} was deleted: {e}")  # ty:ignore[invalid-argument-type]
+            pytest.fail(f"Error when checking if item {created_item_key} was deleted: {e}")
 
 
 # Test for `zot items add-tags`
+@pytest.mark.live
 def test_item_add_tags(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test adding tags to an item."""
     # 1. Create a temporary item using zot_instance for simplicity in getting key/version
@@ -205,7 +213,7 @@ def test_item_add_tags(runner: CliRunner, zot_instance, active_profile_with_real
             zot_instance.delete_item({'key': item_key, 'version': item_version}) # Initial version
         except Exception:
             pass
-        pytest.fail(f"Failed to parse add-tags response or verify success: {e}\nOutput: {add_tags_result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to parse add-tags response or verify success: {e}\nOutput: {add_tags_result.output}")
 
     # 3. Verify tags were added using zot_instance
     try:
@@ -261,7 +269,7 @@ def test_item_add_tags(runner: CliRunner, zot_instance, active_profile_with_real
             zot_instance.delete_item({'key': item_key, 'version': item_version}) # Use potentially updated version
         except Exception:
             pass
-        pytest.fail(f"Failed to verify tags on item {item_key} via API: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to verify tags on item {item_key} via API: {e}")
     finally:
         # 4. Cleanup: Delete the item
         try:
@@ -279,6 +287,7 @@ def test_item_add_tags(runner: CliRunner, zot_instance, active_profile_with_real
 
 
 # Test for `zot items update`
+@pytest.mark.live
 def test_item_update_field(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test updating an item's field using --field."""
     # 1. Create item using zot_instance
@@ -313,7 +322,7 @@ def test_item_update_field(runner: CliRunner, zot_instance, active_profile_with_
             zot_instance.delete_item({'key': item_key, 'version': original_version})
         except Exception:
             pass
-        pytest.fail(f"Failed to parse update response or verify success: {e}\nOutput: {update_result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to parse update response or verify success: {e}\nOutput: {update_result.output}")
 
     # 3. Verify update using zot_instance
     updated_item_details = None
@@ -331,7 +340,7 @@ def test_item_update_field(runner: CliRunner, zot_instance, active_profile_with_
         assert updated_item_data['version'] > original_version, "Version should have incremented"
         updated_item_details = updated_item_data # For cleanup
     except Exception as e:
-        pytest.fail(f"Failed to verify updated item {item_key} via API: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to verify updated item {item_key} via API: {e}")
     finally:
         # 4. Cleanup
         if updated_item_details: # Use the latest fetched item for deletion
@@ -352,6 +361,7 @@ def test_item_update_field(runner: CliRunner, zot_instance, active_profile_with_
                  except Exception as ex_clean:
                      print(f"Secondary cleanup attempt failed for item {item_key}: {ex_clean}")
 
+@pytest.mark.live
 def test_item_update_from_json_string(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test updating an item using --from-json with a JSON string."""
     # 1. Create item
@@ -391,7 +401,7 @@ def test_item_update_from_json_string(runner: CliRunner, zot_instance, active_pr
             zot_instance.delete_item({'key': item_key, 'version': original_version})
         except Exception:
             pass
-        pytest.fail(f"Update from JSON string failed parsing: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Update from JSON string failed parsing: {e}")
 
     # 3. Verify update
     updated_item_details = None
@@ -410,7 +420,7 @@ def test_item_update_from_json_string(runner: CliRunner, zot_instance, active_pr
         assert updated_item_data['version'] > original_version
         updated_item_details = updated_item_data # For cleanup
     except Exception as e:
-        pytest.fail(f"Failed to verify JSON update for item {item_key}: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to verify JSON update for item {item_key}: {e}")
     finally:
         # 4. Cleanup
         if updated_item_details:
@@ -430,6 +440,7 @@ def test_item_update_from_json_string(runner: CliRunner, zot_instance, active_pr
                     pass
 
 # Test for `items children`
+@pytest.mark.live
 def test_item_children(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test `zot items children <parent_key>`."""
     # 1. Create a parent item
@@ -464,7 +475,7 @@ def test_item_children(runner: CliRunner, zot_instance, active_profile_with_real
                 break
         assert child_found_in_output, f"Child item {child_item_key} not found in children list of {parent_item_key}"
     except (json.JSONDecodeError, AssertionError) as e:
-        pytest.fail(f"Failed to parse children response or find child: {e}\nOutput: {children_result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to parse children response or find child: {e}\nOutput: {children_result.output}")
     finally:
         # 4. Cleanup (delete child first, then parent)
         try:
@@ -485,6 +496,7 @@ def test_item_children(runner: CliRunner, zot_instance, active_profile_with_real
             print(f"Error cleaning up parent item {parent_item_key}: {e_parent}")
 
 # Test for `items count`
+@pytest.mark.live
 def test_item_count(runner: CliRunner, active_profile_with_real_credentials):
     """Test `zot items count`."""
     result = runner.invoke(zot, ['items', 'count'])
@@ -495,9 +507,10 @@ def test_item_count(runner: CliRunner, active_profile_with_real_credentials):
         count_str = result.output.split(":")[1].strip()
         assert int(count_str) >= 0 # Count should be a non-negative integer
     except (IndexError, ValueError) as e:
-        pytest.fail(f"Could not parse item count from output: {result.output}\nError: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Could not parse item count from output: {result.output}\nError: {e}")
 
 # Tests for `items bib` and `items citation`
+@pytest.mark.live
 def test_item_bib_and_citation(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test `zot items bib <key>` and `zot items citation <key>`."""
     # 1. Create a temporary item
@@ -537,6 +550,7 @@ def test_item_bib_and_citation(runner: CliRunner, zot_instance, active_profile_w
             print(f"Error cleaning up item {item_key} in bib/citation test: {e}")
 
 # Test for `items get` with different output formats
+@pytest.mark.live
 def test_item_get_with_bibtex_format(runner: CliRunner, temp_item_with_tags, active_profile_with_real_credentials):
     """Test `zot items get <item_key> --output bibtex` returns BibTeX format."""
     item_key, _ = temp_item_with_tags
@@ -547,11 +561,12 @@ def test_item_get_with_bibtex_format(runner: CliRunner, temp_item_with_tags, act
     # Should not be JSON
     try:
         json.loads(result.output)
-        pytest.fail("Output should not be valid JSON, but BibTeX format")  # ty:ignore[invalid-argument-type]
+        pytest.fail("Output should not be valid JSON, but BibTeX format")
     except json.JSONDecodeError:
         # Expected - output should not be valid JSON
         pass
 
+@pytest.mark.live
 def test_item_get_with_csljson_format(runner: CliRunner, temp_item_with_tags, active_profile_with_real_credentials):
     """Test `zot items get <item_key> --output csljson` returns CSL-JSON format."""
     item_key, _ = temp_item_with_tags
@@ -573,10 +588,11 @@ def test_item_get_with_csljson_format(runner: CliRunner, temp_item_with_tags, ac
         # Check for at least one expected CSL-JSON key
         assert any(key in first_item for key in csl_keys), f"CSL-JSON should have some of these keys: {csl_keys}"
     except json.JSONDecodeError:
-        pytest.fail("CSL-JSON output should be valid JSON")  # ty:ignore[invalid-argument-type]
+        pytest.fail("CSL-JSON output should be valid JSON")
     except KeyError as e:
-        pytest.fail(f"Error accessing CSL-JSON data: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Error accessing CSL-JSON data: {e}")
 
+@pytest.mark.live
 def test_item_get_with_bib_format_and_style(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test `zot items get <item_key> --output bib --style <style>`."""
     # 1. Create a temporary item with identifiable details
@@ -609,6 +625,7 @@ def test_item_get_with_bib_format_and_style(runner: CliRunner, zot_instance, act
         except Exception as e:
             print(f"Error cleaning up item {item_key} in bib style test: {e}")
 
+@pytest.mark.live
 def test_item_get_with_bib_format_and_linkwrap(runner: CliRunner, zot_instance, active_profile_with_real_credentials):
     """Test `zot items get <item_key> --output bib --linkwrap`."""
     # 1. Create a temporary item with a URL
@@ -643,3 +660,132 @@ def test_item_get_with_bib_format_and_linkwrap(runner: CliRunner, zot_instance, 
 
 
 # More tests will be added here...
+
+
+# ── Mock tests (no API credentials required) ─────────────────────────────
+
+def test_mock_item_list_json(runner, mock_active_profile, mock_zotero_patched):
+    """Test items list returns valid JSON with mock data."""
+    result = runner.invoke(zot, ['items', 'list', '--limit', '1'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+def test_mock_item_list_top(runner, mock_active_profile, mock_zotero_patched):
+    """Test items list --top returns valid JSON."""
+    result = runner.invoke(zot, ['items', 'list', '--top', '--limit', '1'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+def test_mock_item_list_table(runner, mock_active_profile, mock_zotero_patched):
+    """Test items list --output table."""
+    result = runner.invoke(zot, ['items', 'list', '--limit', '1', '--output', 'table'])
+    assert result.exit_code == 0
+
+def test_mock_item_list_keys(runner, mock_active_profile, mock_zotero_patched):
+    """Test items list --output keys."""
+    result = runner.invoke(zot, ['items', 'list', '--limit', '1', '--output', 'keys'])
+    assert result.exit_code == 0
+    lines = result.output.strip().split('\n')
+    if lines and lines[0]:
+        assert len(lines[0]) == 8  # Zotero keys are 8 chars
+
+def test_mock_item_get(runner, mock_active_profile, mock_zotero_patched):
+    """Test items get returns valid JSON."""
+    result = runner.invoke(zot, ['items', 'get', 'NM66T6EF'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, dict)
+
+def test_mock_item_get_non_existent(runner, mock_active_profile, mock_zotero_patched):
+    """Test items get with non-existent key returns error."""
+    result = runner.invoke(zot, ['items', 'get', 'NONEXIST'])
+    assert result.exit_code == 1
+    assert "Error: A PyZotero library error occurred." in result.output
+    assert "404" in result.output
+    assert "Not found" in result.output
+
+def test_mock_item_count(runner, mock_active_profile, mock_zotero_patched):
+    """Test items count returns count."""
+    result = runner.invoke(zot, ['items', 'count'])
+    assert result.exit_code == 0
+    assert "Total items in library:" in result.output
+    assert "42" in result.output
+
+def test_mock_item_children(runner, mock_active_profile, mock_zotero_patched):
+    """Test items children returns valid JSON list."""
+    result = runner.invoke(zot, ['items', 'children', 'NM66T6EF'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+def test_mock_item_create(runner, mock_active_profile, mock_zotero_patched):
+    """Test items create returns creation response."""
+    result = runner.invoke(zot, ['items', 'create', '--template', 'book', '--field', 'title', 'Test Book'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert 'success' in data
+
+def test_mock_item_bib(runner, mock_active_profile, mock_zotero_patched):
+    """Test items bib returns HTML."""
+    result = runner.invoke(zot, ['items', 'bib', 'NM66T6EF'])
+    assert result.exit_code == 0
+    assert 'csl-entry' in result.output or 'Mock' in result.output
+
+def test_mock_item_citation(runner, mock_active_profile, mock_zotero_patched):
+    """Test items citation returns citation text."""
+    result = runner.invoke(zot, ['items', 'citation', 'NM66T6EF'])
+    assert result.exit_code == 0
+    assert result.output.strip() != ""
+
+def test_mock_item_update_field(runner, mock_active_profile, mock_zotero_patched):
+    """Test items update --field returns success."""
+    result = runner.invoke(zot, [
+        'items', 'update', 'X42A7DEE',
+        '--field', 'title', 'Updated Title',
+        '--last-modified', 'auto'
+    ])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data.get('status') == 'success'
+    assert data.get('item_key') == 'X42A7DEE'
+
+def test_mock_item_update_from_json(runner, mock_active_profile, mock_zotero_patched):
+    """Test items update --from-json returns success."""
+    json_str = json.dumps({"title": "New Title", "abstractNote": "New abstract"})
+    result = runner.invoke(zot, [
+        'items', 'update', 'X42A7DEE',
+        '--from-json', json_str,
+        '--last-modified', 'auto'
+    ])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data.get('status') == 'success'
+
+def test_mock_item_delete_force(runner, mock_active_profile, mock_zotero_patched):
+    """Test items delete --force returns success."""
+    result = runner.invoke(zot, ['items', 'delete', 'X42A7DEE', '--force'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+    assert data[0].get('X42A7DEE') == "Successfully deleted"
+
+def test_mock_item_delete_confirm_yes(runner, mock_active_profile, mock_zotero_patched):
+    """Test items delete with confirmation yes."""
+    result = runner.invoke(zot, ['items', 'delete', 'X42A7DEE'], input='y\n')
+    assert result.exit_code == 0
+    assert "Successfully deleted" in result.output
+
+def test_mock_item_versions(runner, mock_active_profile, mock_zotero_patched):
+    """Test items versions returns data."""
+    result = runner.invoke(zot, ['items', 'versions'])
+    assert result.exit_code == 0
+
+def test_mock_item_add_tags(runner, mock_active_profile, mock_zotero_patched):
+    """Test items add-tags returns success."""
+    result = runner.invoke(zot, ['items', 'add-tags', 'X42A7DEE', 'tag1', 'tag2'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data.get('status') == 'success'
+    assert sorted(data.get('tags_added', [])) == ['tag1', 'tag2']

@@ -12,7 +12,7 @@ from pyzotero import zotero_errors
 def get_real_zotero_instance(credentials):
     """Creates a Pyzotero instance from credentials dict."""
     if not all(k in credentials for k in ['library_id', 'library_type', 'api_key']):
-        pytest.skip("Real API credentials not fully configured for fixture setup.")  # ty:ignore[too-many-positional-arguments]
+        pytest.skip("Real API credentials not fully configured for fixture setup.")
     try:
         return zotero.Zotero(
             library_id=credentials['library_id'],
@@ -20,7 +20,7 @@ def get_real_zotero_instance(credentials):
             api_key=credentials['api_key']
         )
     except Exception as e:
-        pytest.fail(f"Failed to create Zotero instance for fixture: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to create Zotero instance for fixture: {e}")
 
 
 @pytest.fixture(scope="function")
@@ -45,11 +45,11 @@ def temp_attachment_item_key(real_api_credentials, temp_parent_item):
 
         attachment_resp = zot_instance.create_items([attachment_template])
         if not attachment_resp.get('successful') or not list(attachment_resp['successful'].values()):
-            pytest.fail(f"Failed to create attachment item for test: {attachment_resp}")  # ty:ignore[invalid-argument-type]
+            pytest.fail(f"Failed to create attachment item for test: {attachment_resp}")
 
         created_item_data = list(attachment_resp['successful'].values())[0]
         if not isinstance(created_item_data, dict) or 'key' not in created_item_data:
-            pytest.fail(f"Unexpected structure for created item data: {created_item_data}")  # ty:ignore[invalid-argument-type]
+            pytest.fail(f"Unexpected structure for created item data: {created_item_data}")
         attachment_key = created_item_data['key']
         attachment_created = True
         print(f"Created temp attachment item: {attachment_key} linked to parent: {parent_key}") # Debugging
@@ -78,6 +78,7 @@ def temp_attachment_item_key(real_api_credentials, temp_parent_item):
             print(f"\nWarning: Attachment key {attachment_key} exists but attachment_created is false during cleanup.")
 
 
+@pytest.mark.live
 def test_fulltext_set_and_get_pdf_style(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test setting and then getting fulltext using page counts."""
     profile_name = active_profile_with_real_credentials
@@ -111,7 +112,7 @@ def test_fulltext_set_and_get_pdf_style(runner, active_profile_with_real_credent
     try:
         output_data = json.loads(get_result_json.output)
     except json.JSONDecodeError:
-        pytest.fail(f"Default output was not valid JSON: {get_result_json.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Default output was not valid JSON: {get_result_json.output}")
 
     assert output_data.get("content") == test_content
     assert output_data.get("indexedPages") == 10
@@ -129,6 +130,7 @@ def test_fulltext_set_and_get_pdf_style(runner, active_profile_with_real_credent
     # Raw output might have extra newline from click.echo, strip() helps
     assert get_result_raw.output.strip() == test_content
 
+@pytest.mark.live
 def test_fulltext_set_and_get_text_style(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test setting and then getting fulltext using char counts (with live API)."""
     profile_name = active_profile_with_real_credentials
@@ -166,13 +168,14 @@ def test_fulltext_set_and_get_text_style(runner, active_profile_with_real_creden
     try:
         output_data = json.loads(get_result_json.output)
     except json.JSONDecodeError:
-        pytest.fail(f"Default output was not valid JSON: {get_result_json.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Default output was not valid JSON: {get_result_json.output}")
 
     assert output_data.get("content") == test_content
     assert output_data.get("indexedChars") == len(test_content)
     assert output_data.get("totalChars") == len(test_content)
     assert "indexedPages" not in output_data
 
+@pytest.mark.live
 def test_fulltext_set_from_file(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test setting fulltext using a JSON payload from a file."""
     profile_name = active_profile_with_real_credentials
@@ -208,6 +211,7 @@ def test_fulltext_set_from_file(runner, active_profile_with_real_credentials, te
     finally:
         os.remove(tmp_file_path) # Clean up the temp file
 
+@pytest.mark.live
 def test_fulltext_set_invalid_json_string(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test 'set' with malformed JSON string."""
     profile_name = active_profile_with_real_credentials
@@ -224,6 +228,7 @@ def test_fulltext_set_invalid_json_string(runner, active_profile_with_real_crede
     assert "Error: Full-text payload is not valid JSON or a findable file" in result.output
     assert f"Context: Input: '{invalid_json}'" in result.output
 
+@pytest.mark.live
 def test_fulltext_set_invalid_file_path(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test 'set' with a non-existent file path."""
     profile_name = active_profile_with_real_credentials
@@ -239,6 +244,7 @@ def test_fulltext_set_invalid_file_path(runner, active_profile_with_real_credent
     assert "Error: Full-text payload is not valid JSON or a findable file" in result.output
     assert f"Context: Input: '{non_existent_path}'" in result.output
 
+@pytest.mark.live
 def test_fulltext_set_file_not_json(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test 'set' with a file containing invalid JSON."""
     profile_name = active_profile_with_real_credentials
@@ -259,6 +265,7 @@ def test_fulltext_set_file_not_json(runner, active_profile_with_real_credentials
     finally:
         os.remove(tmp_file_path)
 
+@pytest.mark.live
 def test_fulltext_set_missing_content_key(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test 'set' with valid JSON payload missing the 'content' key."""
     profile_name = active_profile_with_real_credentials
@@ -274,6 +281,7 @@ def test_fulltext_set_missing_content_key(runner, active_profile_with_real_crede
     assert "Error: Invalid payload format" in result.output
     assert "Details: Payload must have a 'content' key" in result.output
 
+@pytest.mark.live
 def test_fulltext_set_missing_counts(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test 'set' with payload missing required page OR char counts."""
     profile_name = active_profile_with_real_credentials
@@ -289,6 +297,7 @@ def test_fulltext_set_missing_counts(runner, active_profile_with_real_credential
     assert "Error: Incomplete payload format" in result.output
     assert "Details: Payload needs ('indexedPages' & 'totalPages') OR ('indexedChars' & 'totalChars')" in result.output
 
+@pytest.mark.live
 def test_fulltext_set_both_counts_warning(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test 'set' with payload having BOTH page and char counts (should warn but succeed)."""
     profile_name = active_profile_with_real_credentials
@@ -311,6 +320,7 @@ def test_fulltext_set_both_counts_warning(runner, active_profile_with_real_crede
     # Check for success message in stdout
     assert f"Successfully set full-text for item '{attachment_key}'" in result.output
 
+@pytest.mark.live
 def test_fulltext_get_not_found(runner, active_profile_with_real_credentials):
     """Test 'get' for a non-existent item key."""
     profile_name = active_profile_with_real_credentials
@@ -326,6 +336,7 @@ def test_fulltext_get_not_found(runner, active_profile_with_real_credentials):
     assert "Response: Not found" in result.output
     # No mock assertion needed, the check for the error message from CLI is sufficient
 
+@pytest.mark.live
 def test_fulltext_get_item_not_attachment_or_no_fulltext(runner, active_profile_with_real_credentials):
     """Test 'get' for an item that exists but isn't an attachment or has no fulltext."""
     # Easiest way to get a valid key is to list some items first
@@ -334,15 +345,15 @@ def test_fulltext_get_item_not_attachment_or_no_fulltext(runner, active_profile_
         '--profile', profile_name, 'items', 'list', '--limit', '1', '--output', 'json'
     ], catch_exceptions=False)
     if list_result.exit_code != 0 or not list_result.output.strip():
-            pytest.skip("Could not retrieve an item key for testing get on non-attachment.")  # ty:ignore[too-many-positional-arguments]
+            pytest.skip("Could not retrieve an item key for testing get on non-attachment.")
 
     try:
         items = json.loads(list_result.output)
         if not items:
-                pytest.skip("Library seems empty, cannot get a non-attachment item key.")  # ty:ignore[too-many-positional-arguments]
+                pytest.skip("Library seems empty, cannot get a non-attachment item key.")
         item_key = items[0]['key'] # Assuming the first item isn't a fulltext attachment
     except (json.JSONDecodeError, IndexError, KeyError):
-        pytest.skip("Could not parse item list to get a key for testing.")  # ty:ignore[too-many-positional-arguments]
+        pytest.skip("Could not parse item list to get a key for testing.")
 
 
     get_result = runner.invoke(zot, [
@@ -369,6 +380,7 @@ def test_fulltext_get_item_not_attachment_or_no_fulltext(runner, active_profile_
 # modifying items between calls, which is complex in an automated test.
 # We'll test format and the 'no new content' case primarily.
 
+@pytest.mark.live
 def test_fulltext_list_new_format_json(runner, active_profile_with_real_credentials):
     """Test 'list-new' basic functionality and JSON output format (using since=0)."""
     profile_name = active_profile_with_real_credentials
@@ -384,6 +396,7 @@ def test_fulltext_list_new_format_json(runner, active_profile_with_real_credenti
     # Ensure the success message for no content is not present if an error occurred
     assert "No new full-text content found" not in result.output
 
+@pytest.mark.live
 def test_fulltext_list_new_format_keys(runner, active_profile_with_real_credentials):
     """Test 'list-new' with --output keys."""
     profile_name = active_profile_with_real_credentials
@@ -398,6 +411,7 @@ def test_fulltext_list_new_format_keys(runner, active_profile_with_real_credenti
     # Ensure the success message for no content is not present if an error occurred
     assert "No new full-text content found" not in result.output
 
+@pytest.mark.live
 def test_fulltext_list_new_format_table(runner, active_profile_with_real_credentials):
     """Test 'list-new' with --output table."""
     profile_name = active_profile_with_real_credentials
@@ -412,6 +426,7 @@ def test_fulltext_list_new_format_table(runner, active_profile_with_real_credent
     # Ensure the success message for no content is not present if an error occurred
     assert "No new full-text content found" not in result.output
 
+@pytest.mark.live
 def test_fulltext_list_new_no_new_content(runner, active_profile_with_real_credentials):
     """Test 'list-new' with a very high 'since' version expecting no results (or an error)."""
     profile_name = active_profile_with_real_credentials
@@ -426,6 +441,7 @@ def test_fulltext_list_new_no_new_content(runner, active_profile_with_real_crede
     # Ensure the specific "no content" message is not in output if an error occurred
     assert "No new full-text content found since the specified version." not in result.output
 
+@pytest.mark.live
 def test_fulltext_list_new_missing_since(runner, active_profile_with_real_credentials):
     """Test 'list-new' fails if --since is not provided."""
     profile_name = active_profile_with_real_credentials
@@ -436,6 +452,7 @@ def test_fulltext_list_new_missing_since(runner, active_profile_with_real_creden
     assert result.exit_code != 0
     assert "Missing option '--since'" in result.output
 
+@pytest.mark.live
 def test_fulltext_set_with_local_warns(runner, active_profile_with_real_credentials, temp_attachment_item_key):
     """Test that 'set' warns when --local is used."""
     profile_name = active_profile_with_real_credentials
@@ -470,3 +487,73 @@ def test_fulltext_set_with_local_warns(runner, active_profile_with_real_credenti
         print("Warning: Local Zotero unexpectedly seemed to allow 'set', or the test couldn't detect failure.")
     else:
         assert "Failed to set full-text" in result.output or "Error:" in result.output # Check for failure indication
+
+
+# ── Mock tests ────────────────────────────────────────────────────────────
+
+def test_mock_fulltext_get_json(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['fulltext', 'get', 'SOMEKEY'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert 'content' in data
+
+def test_mock_fulltext_get_raw(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['fulltext', 'get', 'SOMEKEY', '--output', 'raw_content'])
+    assert result.exit_code == 0
+    assert result.output.strip() != ""
+
+def test_mock_fulltext_get_not_found(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['fulltext', 'get', 'NONEXIST_KEY'])
+    assert result.exit_code != 0
+
+def test_mock_fulltext_set_missing_content(runner, mock_active_profile, mock_zotero_patched):
+    import json as json_mod
+    payload = json_mod.dumps({"indexedPages": 1, "totalPages": 1})
+    result = runner.invoke(zot, ['fulltext', 'set', 'SOMEKEY', '--from-json', payload])
+    assert result.exit_code != 0
+    assert "Error: Invalid payload format" in result.output
+
+def test_mock_fulltext_list_new_missing_since(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['fulltext', 'list-new'])
+    assert result.exit_code != 0
+    assert "Missing option '--since'" in result.output
+
+def test_mock_fulltext_set_pdf_style(runner, mock_active_profile, mock_zotero_patched):
+    """Test setting fulltext with page counts succeeds."""
+    payload = json.dumps({"content": "Test content", "indexedPages": 5, "totalPages": 5})
+    result = runner.invoke(zot, ['fulltext', 'set', 'SOMEKEY', '--from-json', payload])
+    assert result.exit_code == 0
+    assert "Successfully set full-text for item 'SOMEKEY'" in result.output
+
+def test_mock_fulltext_set_text_style(runner, mock_active_profile, mock_zotero_patched):
+    """Test setting fulltext with char counts succeeds."""
+    content = "Hello world"
+    payload = json.dumps({"content": content, "indexedChars": len(content), "totalChars": len(content)})
+    result = runner.invoke(zot, ['fulltext', 'set', 'SOMEKEY', '--from-json', payload])
+    assert result.exit_code == 0
+    assert "Successfully set full-text for item 'SOMEKEY'" in result.output
+
+def test_mock_fulltext_set_both_counts_warning(runner, mock_active_profile, mock_zotero_patched):
+    """Test that both page and char counts produces a warning but still succeeds."""
+    payload = json.dumps({
+        "content": "test",
+        "indexedPages": 1, "totalPages": 1,
+        "indexedChars": 4, "totalChars": 4,
+    })
+    result = runner.invoke(zot, ['fulltext', 'set', 'SOMEKEY', '--from-json', payload])
+    assert result.exit_code == 0
+    assert "Warning: Payload has both page and char counts." in result.stderr
+    assert "Successfully set full-text for item 'SOMEKEY'" in result.output
+
+def test_mock_fulltext_set_invalid_json(runner, mock_active_profile, mock_zotero_patched):
+    """Test set with malformed JSON string."""
+    result = runner.invoke(zot, ['fulltext', 'set', 'SOMEKEY', '--from-json', '{"content": "missing quote}'])
+    assert result.exit_code != 0
+    assert "Error: Full-text payload is not valid JSON or a findable file" in result.output
+
+def test_mock_fulltext_set_missing_counts(runner, mock_active_profile, mock_zotero_patched):
+    """Test set with payload missing required counts."""
+    payload = json.dumps({"content": "some text"})
+    result = runner.invoke(zot, ['fulltext', 'set', 'SOMEKEY', '--from-json', payload])
+    assert result.exit_code != 0
+    assert "Error: Incomplete payload format" in result.output

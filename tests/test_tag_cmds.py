@@ -22,7 +22,7 @@ def temp_tag_in_library(zot_instance):
     if item_resp and 'successful' in item_resp and item_resp['successful']:
         item_key = list(item_resp['successful'].keys())[0]
     else:
-        pytest.fail(f"Failed to create temporary item needed for tag fixture setup: {item_resp}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to create temporary item needed for tag fixture setup: {item_resp}")
 
     yield tag_name # Yield the tag name to the test
 
@@ -35,6 +35,7 @@ def temp_tag_in_library(zot_instance):
         print(f"Error during tag fixture cleanup (deleting item {item_key}): {e}")
 
 # Tests for 'zot-cli tag list'
+@pytest.mark.live
 def test_list_tags_default_output(temp_tag_in_library, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_check = temp_tag_in_library
     result = runner.invoke(zot, ['tags', 'list'])
@@ -44,8 +45,9 @@ def test_list_tags_default_output(temp_tag_in_library, active_profile_with_real_
         assert isinstance(output_json, list)
         assert tag_to_check in output_json
     except json.JSONDecodeError:
-        pytest.fail(f"Default output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Default output was not valid JSON: {result.output}")
 
+@pytest.mark.live
 def test_list_tags_json_output(temp_tag_in_library, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_check = temp_tag_in_library
     result = runner.invoke(zot, ['tags', 'list', '--output', 'json'])
@@ -55,8 +57,9 @@ def test_list_tags_json_output(temp_tag_in_library, active_profile_with_real_cre
         assert isinstance(output_json, list)
         assert tag_to_check in output_json
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid JSON: {result.output}")
 
+@pytest.mark.live
 def test_list_tags_yaml_output(temp_tag_in_library, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_check = temp_tag_in_library
     result = runner.invoke(zot, ['tags', 'list', '--output', 'yaml'])
@@ -66,8 +69,9 @@ def test_list_tags_yaml_output(temp_tag_in_library, active_profile_with_real_cre
         assert isinstance(output_yaml, list)
         assert tag_to_check in output_yaml
     except yaml.YAMLError:
-        pytest.fail(f"Output was not valid YAML: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid YAML: {result.output}")
 
+@pytest.mark.live
 def test_list_tags_with_limit(zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     zot_api_client = zot_instance
     tag1 = f"limit-tag1-{uuid.uuid4()}"
@@ -107,6 +111,7 @@ def test_list_tags_with_limit(zot_instance, active_profile_with_real_credentials
 
 
 # Tests for 'zot-cli tag list-for-item'
+@pytest.mark.live
 def test_list_item_tags_default_output(temp_item_with_tags, active_profile_with_real_credentials, runner: CliRunner):
     item_key, expected_tags = temp_item_with_tags
     result = runner.invoke(zot, ['tags', 'list-for-item', item_key])
@@ -116,8 +121,9 @@ def test_list_item_tags_default_output(temp_item_with_tags, active_profile_with_
         assert isinstance(output_json, list)
         assert sorted(output_json) == sorted(expected_tags)
     except json.JSONDecodeError:
-        pytest.fail(f"Default output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Default output was not valid JSON: {result.output}")
 
+@pytest.mark.live
 def test_list_item_tags_json_output(temp_item_with_tags, active_profile_with_real_credentials, runner: CliRunner):
     item_key, expected_tags = temp_item_with_tags
     result = runner.invoke(zot, ['tags', 'list-for-item', item_key, '--output', 'json'])
@@ -127,8 +133,9 @@ def test_list_item_tags_json_output(temp_item_with_tags, active_profile_with_rea
         assert isinstance(output_json, list)
         assert sorted(output_json) == sorted(expected_tags)
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid JSON: {result.output}")
 
+@pytest.mark.live
 def test_list_item_tags_non_existent_item(runner: CliRunner, active_profile_with_real_credentials):
     non_existent_key = f"NONEXISTENTKEY{uuid.uuid4()}" # Ensure truly non-existent
     result = runner.invoke(zot, ['tags', 'list-for-item', non_existent_key])
@@ -138,6 +145,7 @@ def test_list_item_tags_non_existent_item(runner: CliRunner, active_profile_with
 
 
 # Tests for 'zot-cli tag delete'
+@pytest.mark.live
 def test_delete_tag_force(temp_tag_in_library, zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_delete = temp_tag_in_library
     zot_api_client = zot_instance
@@ -149,6 +157,7 @@ def test_delete_tag_force(temp_tag_in_library, zot_instance, active_profile_with
     assert f"Successfully deleted tags: {tag_to_delete}" in result.output
     assert tag_to_delete not in zot_api_client.tags(), "Tag should be deleted from the library."
 
+@pytest.mark.live
 def test_delete_multiple_tags_force(zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     zot_api_client = zot_instance
     tag1 = f"del-multi1-{uuid.uuid4()}"
@@ -196,6 +205,7 @@ def test_delete_multiple_tags_force(zot_instance, active_profile_with_real_crede
             print(f"Error during safeguard tag deletion ('{tag1}', '{tag2}'): {e}")
             traceback.print_exc()
 
+@pytest.mark.live
 def test_delete_tag_interactive_confirm_yes(temp_tag_in_library, zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_delete = temp_tag_in_library
     zot_api_client = zot_instance
@@ -207,6 +217,7 @@ def test_delete_tag_interactive_confirm_yes(temp_tag_in_library, zot_instance, a
     assert "Are you sure you want to delete" in result.output # Check prompt was shown
     assert tag_to_delete not in zot_api_client.tags()
 
+@pytest.mark.live
 def test_delete_tag_interactive_confirm_no(temp_tag_in_library, zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_delete = temp_tag_in_library
     zot_api_client = zot_instance
@@ -218,6 +229,7 @@ def test_delete_tag_interactive_confirm_no(temp_tag_in_library, zot_instance, ac
     assert "Are you sure you want to delete" in result.output
     assert tag_to_delete in zot_api_client.tags() # Tag should still exist
 
+@pytest.mark.live
 def test_delete_tag_no_interaction_flag(temp_tag_in_library, zot_instance, active_profile_with_real_credentials, runner: CliRunner):
     tag_to_delete = temp_tag_in_library
     zot_api_client = zot_instance
@@ -230,6 +242,7 @@ def test_delete_tag_no_interaction_flag(temp_tag_in_library, zot_instance, activ
     assert "Are you sure you want to delete" not in result.output # Prompt should be skipped
     assert tag_to_delete not in zot_api_client.tags()
 
+@pytest.mark.live
 def test_delete_non_existent_tag_force(runner: CliRunner, active_profile_with_real_credentials):
     non_existent_tag = f"non-existent-tag-{uuid.uuid4()}"
     result = runner.invoke(zot, ['tags', 'delete', non_existent_tag, '--force'])
@@ -237,3 +250,41 @@ def test_delete_non_existent_tag_force(runner: CliRunner, active_profile_with_re
     # Pyzotero's delete_tags usually doesn't error on non-existent tags.
     # The CLI reports success based on the tags provided.
     assert f"Successfully deleted tags: {non_existent_tag}" in result.output
+
+
+# ── Mock tests (no API credentials required) ─────────────────────────────
+
+def test_mock_list_tags_json(runner, mock_active_profile, mock_zotero_patched):
+    """Test tags list returns valid JSON."""
+    result = runner.invoke(zot, ['tags', 'list'])
+    assert result.exit_code == 0
+    output_json = json.loads(result.output)
+    assert isinstance(output_json, list)
+
+def test_mock_list_tags_yaml(runner, mock_active_profile, mock_zotero_patched):
+    """Test tags list --output yaml."""
+    result = runner.invoke(zot, ['tags', 'list', '--output', 'yaml'])
+    assert result.exit_code == 0
+    output_yaml = yaml.safe_load(result.output)
+    assert isinstance(output_yaml, list)
+
+def test_mock_list_tags_with_limit(runner, mock_active_profile, mock_zotero_patched):
+    """Test tags list --limit."""
+    result = runner.invoke(zot, ['tags', 'list', '--limit', '1'])
+    assert result.exit_code == 0
+    output_json = json.loads(result.output)
+    assert isinstance(output_json, list)
+    assert len(output_json) == 1
+
+def test_mock_list_item_tags(runner, mock_active_profile, mock_zotero_patched):
+    """Test tags list-for-item returns tags for an item."""
+    result = runner.invoke(zot, ['tags', 'list-for-item', 'NM66T6EF'])
+    assert result.exit_code == 0
+    output_json = json.loads(result.output)
+    assert isinstance(output_json, list)
+
+def test_mock_delete_tag_force(runner, mock_active_profile, mock_zotero_patched):
+    """Test tags delete --force succeeds."""
+    result = runner.invoke(zot, ['tags', 'delete', 'some-tag', '--force'])
+    assert result.exit_code == 0
+    assert "Successfully deleted tags: some-tag" in result.output
