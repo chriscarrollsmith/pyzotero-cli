@@ -3,6 +3,7 @@ name: test
 on:
   pull_request:
     branches: [main]
+  workflow_call:
 
 jobs:
   build:
@@ -30,6 +31,9 @@ jobs:
           uv sync
           uv run python -c "import pyzotero_cli; print('Import OK')"
 
+      - name: Run mock tests (no API credentials required)
+        run: uv run pytest tests -v
+
   integration-test:
     runs-on: ubuntu-latest
     environment: test
@@ -52,4 +56,4 @@ jobs:
           ZOTERO_TEST_GROUP_ID: ${{ secrets.ZOTERO_TEST_GROUP_ID }}
         run: |
           uv sync
-          uv run pytest tests -v
+          uv run pytest tests -v -m "live"
