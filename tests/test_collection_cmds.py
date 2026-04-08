@@ -87,6 +87,7 @@ def test_collection_group_init_error(mock_zotero_class, runner, active_profile_w
 
 # Test `collection list`
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_list_basic(runner, active_profile_with_real_credentials, temp_collection_in_library):
     collection_key = temp_collection_in_library # Fixture creates collection
@@ -101,6 +102,7 @@ def test_collection_list_basic(runner, active_profile_with_real_credentials, tem
 
 
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_list_top(runner, active_profile_with_real_credentials, temp_collection_in_library):
     parent_key = temp_collection_in_library # This is a top-level collection
@@ -128,6 +130,7 @@ def test_collection_list_top(runner, active_profile_with_real_credentials, temp_
 
 
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_list_with_params(runner, active_profile_with_real_credentials, temp_collection_in_library):
     _collection_key = temp_collection_in_library  # fixture needed for side effects
@@ -158,6 +161,7 @@ def test_collection_list_with_params(runner, active_profile_with_real_credential
 
 # Test `collection get`
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_get_basic(runner, active_profile_with_real_credentials, temp_collection_in_library):
     collection_key = temp_collection_in_library
@@ -177,6 +181,7 @@ def test_collection_get_basic(runner, active_profile_with_real_credentials, temp
 
 
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_get_not_found(runner, active_profile_with_real_credentials):
     non_existent_key = f"NONEXISTENT_{os.urandom(4).hex()}"
@@ -192,6 +197,7 @@ def test_collection_get_not_found(runner, active_profile_with_real_credentials):
 
 # Test `collection subcollections`
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_subcollections_basic(runner, active_profile_with_real_credentials, temp_collection_in_library):
     parent_key = temp_collection_in_library
@@ -219,6 +225,7 @@ def test_collection_subcollections_basic(runner, active_profile_with_real_creden
 
 # Test `collection all`
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_all_basic(runner, active_profile_with_real_credentials, temp_collection_in_library):
     parent_key = temp_collection_in_library
@@ -245,6 +252,7 @@ def test_collection_all_basic(runner, active_profile_with_real_credentials, temp
 
 
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_all_with_parent(runner, active_profile_with_real_credentials, temp_collection_in_library):
     parent_key = temp_collection_in_library
@@ -273,6 +281,7 @@ def test_collection_all_with_parent(runner, active_profile_with_real_credentials
 
 
 # Test `collection items`
+@pytest.mark.live
 def test_collection_items_basic(runner, active_profile_with_real_credentials, temp_collection_in_library, temp_item_with_tags): # Add fixtures
     collection_key = temp_collection_in_library
     # We need the real key before adding it to the collection.
@@ -301,6 +310,7 @@ def test_collection_items_basic(runner, active_profile_with_real_credentials, te
     assert isinstance(output_data, list)
     assert any(item['key'] == item_key for item in output_data), f"Item {item_key} not found in collection {collection_key} items list"
 
+@pytest.mark.live
 def test_collection_items_top(runner, active_profile_with_real_credentials, temp_collection_in_library, temp_item_with_tags):
     collection_key = temp_collection_in_library
     # WORKAROUND: Fetch the actual item key, similar to test_collection_items_basic
@@ -328,6 +338,7 @@ def test_collection_items_top(runner, active_profile_with_real_credentials, temp
     assert any(item['key'] == item_key for item in output_data), f"Item {item_key} not found in collection {collection_key} top items list"
 
 # Test `collection item-count`
+@pytest.mark.live
 def test_collection_item_count_basic(runner, active_profile_with_real_credentials, temp_collection_in_library, temp_item_with_tags):
     collection_key = temp_collection_in_library
     item_key, _ = temp_item_with_tags # Get item key from fixture
@@ -349,6 +360,7 @@ def test_collection_item_count_basic(runner, active_profile_with_real_credential
     assert f"Number of items in collection '{collection_key}': 1" in result.output
 
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_item_count_not_found(runner, active_profile_with_real_credentials):
     non_existent_key = f"NONEXISTENT_{os.urandom(4).hex()}"
@@ -364,6 +376,7 @@ def test_collection_item_count_not_found(runner, active_profile_with_real_creden
 
 # Test `collection versions`
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_versions_basic(runner, active_profile_with_real_credentials, temp_collection_in_library):
     collection_key = temp_collection_in_library
@@ -378,6 +391,7 @@ def test_collection_versions_basic(runner, active_profile_with_real_credentials,
     assert isinstance(output_data[collection_key], int) # Version should be an integer
 
 # @patch('pyzotero_cli.collection_cmds.zotero.Zotero') - REMOVE PATCH
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_versions_since(runner, active_profile_with_real_credentials, temp_collection_in_library):
     first_collection_key = temp_collection_in_library
@@ -417,6 +431,7 @@ def test_collection_versions_since(runner, active_profile_with_real_credentials,
 
 
 # Test `collection create` (requires real API or more complex mocking)
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_create_and_delete_real(runner, active_profile_with_real_credentials):
     """Tests creating and deleting a collection using the real API."""
@@ -480,6 +495,7 @@ def test_collection_create_and_delete_real(runner, active_profile_with_real_cred
             # Don't assert exit code 0 strictly, focus is on creation success
 
 # Test `collection update` (requires real API via fixture)
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_update_name_real(runner, active_profile_with_real_credentials, temp_collection_in_library):
     collection_key = temp_collection_in_library
@@ -509,6 +525,7 @@ def test_collection_update_name_real(runner, active_profile_with_real_credential
     # updated_data = eval(result_get_updated.output.strip())[0] # Use json.loads instead
     assert updated_data['version'] > initial_version # Version should increase
 
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_update_precondition_fail_real(runner, active_profile_with_real_credentials, temp_collection_in_library):
     collection_key = temp_collection_in_library
@@ -522,6 +539,7 @@ def test_collection_update_precondition_fail_real(runner, active_profile_with_re
     assert "Version value does not match" in result_update.output or "version mismatch" in result_update.output or "precondition failed" in result_update.output.lower() # Check for actual API error message
 
 
+@pytest.mark.live
 def test_collection_update_options_conflict(runner, active_profile_with_real_credentials): # Keep active_profile for context consistency
     # No need for API call, just check Click's validation
 
@@ -531,6 +549,7 @@ def test_collection_update_options_conflict(runner, active_profile_with_real_cre
     assert 'Error: Cannot use --from-json with --name or --parent-id simultaneously.' in result.output
 
 
+@pytest.mark.live
 def test_collection_update_no_options(runner, active_profile_with_real_credentials): # Keep active_profile for context consistency
     # No need for API call, just check Click's validation
 
@@ -540,6 +559,7 @@ def test_collection_update_no_options(runner, active_profile_with_real_credentia
     assert 'Error: Either --name, --parent-id, or --from-json must be provided for an update.' in result.output
 
 # Test `collection delete` (uses fixture for temp collection)
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_delete_real_force(runner, active_profile_with_real_credentials, temp_collection_in_library):
     collection_key = temp_collection_in_library # Fixture provides the key
@@ -566,6 +586,7 @@ def test_collection_delete_real_force(runner, active_profile_with_real_credentia
 
 
 # Test `collection add-item`
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials", "temp_item_with_tags")
 def test_collection_add_item_real(runner, active_profile_with_real_credentials, temp_collection_in_library, temp_item_with_tags):
     collection_key = temp_collection_in_library
@@ -602,6 +623,7 @@ def test_collection_add_item_real(runner, active_profile_with_real_credentials, 
 
 
 # Test `collection remove-item`
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials", "temp_item_with_tags")
 def test_collection_remove_item_real(runner, active_profile_with_real_credentials, temp_item_with_tags):
     item_key, _ = temp_item_with_tags # Get item key from fixture
@@ -657,6 +679,7 @@ def test_collection_remove_item_real(runner, active_profile_with_real_credential
 
 
 # Test `collection tags`
+@pytest.mark.live
 def test_collection_tags_basic(runner, active_profile_with_real_credentials, temp_collection_in_library):
     """Test that fetching tags directly on a collection returns an empty list."""
     # NOTE: Zotero collections do not have tags directly applied to them like items do.
@@ -673,9 +696,10 @@ def test_collection_tags_basic(runner, active_profile_with_real_credentials, tem
         assert isinstance(output_data, list), "Output should be a list."
         assert output_data == [], f"Expected an empty list for collection tags, but got: {output_data}"
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid JSON: {result.output}")
 
 
+@pytest.mark.live
 @pytest.mark.usefixtures("active_profile_with_real_credentials")
 def test_collection_tags_collection_not_found(runner, active_profile_with_real_credentials):
     non_existent_key = f"NONEXISTENT_{os.urandom(4).hex()}"
@@ -688,3 +712,103 @@ def test_collection_tags_collection_not_found(runner, active_profile_with_real_c
     assert "Error: A PyZotero library error occurred." in result.output
     assert "Code: 404" in result.output
     assert "Response: Not found" in result.output
+
+
+# ── Mock tests (no API credentials required) ─────────────────────────────
+
+def test_mock_collection_list_json(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections list returns valid JSON."""
+    result = runner.invoke(zot, ['collections', 'list'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+    assert len(data) > 0
+
+def test_mock_collection_list_top(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections list --top returns valid JSON."""
+    result = runner.invoke(zot, ['collections', 'list', '--top'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+def test_mock_collection_get(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections get returns valid JSON."""
+    result = runner.invoke(zot, ['collections', 'get', 'N7W92H48'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, dict)
+
+def test_mock_collection_subcollections(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections subcollections returns valid JSON list."""
+    result = runner.invoke(zot, ['collections', 'subcollections', 'N7W92H48'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+def test_mock_collection_all(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections all returns valid JSON list."""
+    result = runner.invoke(zot, ['collections', 'all'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+def test_mock_collection_items(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections items returns valid JSON list."""
+    result = runner.invoke(zot, ['collections', 'items', 'N7W92H48'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+def test_mock_collection_tags(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections tags returns data."""
+    result = runner.invoke(zot, ['collections', 'tags', 'N7W92H48'])
+    assert result.exit_code == 0
+
+def test_mock_collection_create(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections create returns creation response."""
+    result = runner.invoke(zot, ['collections', 'create', '--name', 'Test Collection'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert 'success' in data
+
+def test_mock_collection_versions(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections versions returns data."""
+    result = runner.invoke(zot, ['collections', 'versions'])
+    assert result.exit_code == 0
+
+def test_mock_collection_item_count(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections item-count returns count."""
+    result = runner.invoke(zot, ['collections', 'item-count', 'N7W92H48'])
+    assert result.exit_code == 0
+    assert "Number of items in collection" in result.output
+
+def test_mock_collection_update(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections update --name returns success."""
+    result = runner.invoke(zot, [
+        'collections', 'update', 'N7W92H48',
+        '--name', 'Updated Name',
+        '--last-modified', 'auto'
+    ])
+    assert result.exit_code == 0
+
+def test_mock_collection_delete_force(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections delete --force returns success."""
+    result = runner.invoke(zot, ['collections', 'delete', 'N7W92H48', '--force'])
+    assert result.exit_code == 0
+    assert "Successfully deleted" in result.output
+
+def test_mock_collection_delete_confirm_yes(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections delete with confirmation yes."""
+    result = runner.invoke(zot, ['collections', 'delete', 'N7W92H48'], input='y\n')
+    assert result.exit_code == 0
+    assert "Successfully deleted" in result.output
+
+def test_mock_collection_add_item(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections add-item returns success."""
+    result = runner.invoke(zot, ['collections', 'add-item', 'N7W92H48', 'X42A7DEE'])
+    assert result.exit_code == 0
+
+def test_mock_collection_remove_item(runner, mock_active_profile, mock_zotero_patched):
+    """Test collections remove-item returns success."""
+    result = runner.invoke(zot, ['collections', 'remove-item', 'N7W92H48', 'X42A7DEE'])
+    assert result.exit_code == 0

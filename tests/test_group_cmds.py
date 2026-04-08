@@ -11,6 +11,7 @@ from pyzotero_cli.zot_cli import zot
 load_dotenv(override=True)
 
 # Test function for the default JSON output
+@pytest.mark.live
 def test_list_groups_default_json(runner: CliRunner, active_profile_with_real_credentials):
     """
     Tests the default 'zot groups list' command output (JSON).
@@ -23,7 +24,7 @@ def test_list_groups_default_json(runner: CliRunner, active_profile_with_real_cr
     try:
         output_data = json.loads(result.output)
     except json.JSONDecodeError:
-        pytest.fail(f"Output is not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output is not valid JSON: {result.output}")
 
     assert isinstance(output_data, list), "Default JSON output should be a list of groups."
 
@@ -48,6 +49,7 @@ def test_list_groups_default_json(runner: CliRunner, active_profile_with_real_cr
         pass 
 
 # Test function for the --output keys option
+@pytest.mark.live
 def test_list_groups_keys_output(runner: CliRunner, active_profile_with_real_credentials):
     """
     Tests 'zot groups list --output keys'.
@@ -65,12 +67,13 @@ def test_list_groups_keys_output(runner: CliRunner, active_profile_with_real_cre
         assert all(key.isdigit() for key in keys), f"Output contains non-digit keys: {result.output}"
         assert test_group_id_str in keys, f"Expected group ID {test_group_id_str} not found in keys output."
     else:
-        pytest.fail(f"Expected group ID {test_group_id_str} in keys output, but got empty output.")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Expected group ID {test_group_id_str} in keys output, but got empty output.")
 
 # Test function for the --output table option
 # This test focuses on the "no groups" message OR actual table output.
 # If the group 5988190 is present, it will not output the "No groups found..." message.
 # So, we adapt it to check for either the specific message or a valid table structure.
+@pytest.mark.live
 def test_list_groups_table_output(runner: CliRunner, active_profile_with_real_credentials):
     """
     Tests 'zot groups list --output table'.
@@ -105,12 +108,13 @@ def test_list_groups_table_output(runner: CliRunner, active_profile_with_real_cr
             #     assert any(test_group_id_str in line for line in output_lines), \
             #            f"Test group ID {test_group_id_str} not found in table output."
         else:
-            pytest.fail(f"Table output has too few lines to contain headers. Output: {result.output}")  # ty:ignore[invalid-argument-type]
+            pytest.fail(f"Table output has too few lines to contain headers. Output: {result.output}")
     else:
-        pytest.fail(f"Unexpected table output. Expected table or '{no_groups_message}', got: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Unexpected table output. Expected table or '{no_groups_message}', got: {result.output}")
 
 
 # Test function for the --limit option
+@pytest.mark.live
 def test_list_groups_limit(runner: CliRunner, active_profile_with_real_credentials):
     """
     Tests 'zot groups list --limit 1'.
@@ -123,7 +127,7 @@ def test_list_groups_limit(runner: CliRunner, active_profile_with_real_credentia
     try:
         output_data = json.loads(result.output)
     except json.JSONDecodeError:
-        pytest.fail(f"Output is not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output is not valid JSON: {result.output}")
 
     assert isinstance(output_data, list), "JSON output with limit should still be a list."
     assert len(output_data) <= 1, "Output list should contain at most 1 group when --limit=1."
@@ -132,6 +136,7 @@ def test_list_groups_limit(runner: CliRunner, active_profile_with_real_credentia
     #     assert output_data[0].get('id') == 5988190, "If one group is returned, it should be the test group."
 
 # Test function for sorting (example: by name ascending)
+@pytest.mark.live
 def test_list_groups_sort_name_asc(runner: CliRunner, active_profile_with_real_credentials):
     """
     Tests 'zot groups list --sort name --direction asc'.
@@ -144,7 +149,7 @@ def test_list_groups_sort_name_asc(runner: CliRunner, active_profile_with_real_c
     try:
         output_data = json.loads(result.output)
     except json.JSONDecodeError:
-        pytest.fail(f"Output is not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output is not valid JSON: {result.output}")
 
     assert isinstance(output_data, list), "JSON output should be a list."
     
@@ -177,3 +182,25 @@ def test_list_groups_sort_name_asc(runner: CliRunner, active_profile_with_real_c
         # If some items lacked dates, we can't reliably check sortedness here with this method.
 
 
+# ── Mock tests ────────────────────────────────────────────────────────────
+
+def test_mock_list_groups_json(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['groups', 'list', '--output', 'json'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+def test_mock_list_groups_keys(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['groups', 'list', '--output', 'keys'])
+    assert result.exit_code == 0
+
+def test_mock_list_groups_table(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['groups', 'list', '--output', 'table'])
+    assert result.exit_code == 0
+
+def test_mock_list_groups_limit(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['groups', 'list', '--limit', '1', '--output', 'json'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+    assert len(data) <= 1

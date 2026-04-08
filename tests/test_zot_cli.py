@@ -206,6 +206,7 @@ def test_configure_without_credentials(isolated_config, runner: CliRunner):
     assert result_get.exit_code == 0
     assert result_get.output.strip() == '123'
 
+@pytest.mark.live
 def test_list_items_real_api(isolated_config, real_api_credentials, runner: CliRunner):
     """
     Tests 'zot items list --limit 1' using real API calls.
@@ -257,8 +258,9 @@ def test_list_items_real_api(isolated_config, real_api_credentials, runner: CliR
             # The library ID in the response should match the one from our environment variables.
             assert str(output_data[0]['library']['id']) == real_api_credentials['library_id']
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid JSON: {result.output}")
 
+@pytest.mark.live
 def test_list_items_with_active_profile(active_profile_with_real_credentials, real_api_credentials, runner: CliRunner):
     """
     Tests 'zot items list --limit 1' using a pre-configured active profile.
@@ -299,7 +301,7 @@ def test_list_items_with_active_profile(active_profile_with_real_credentials, re
             assert str(item['library']['id']) == real_api_credentials['library_id']
             assert item['library']['type'] == real_api_credentials['library_type']
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid JSON: {result.output}")
 
 def test_zot_version(runner: CliRunner):
     """Test that 'zot --version' prints the version number and exits."""
@@ -320,4 +322,11 @@ def test_credential_validation_exit_codes(isolated_config, runner: CliRunner):
         assert "Error: API key is required when not using --local mode" in result.output
         assert "Hint: Set via --api-key, ZOTERO_API_KEY, or profile" in result.output
 
-# More tests will be added here 
+# ── Mock tests ────────────────────────────────────────────────────────────
+
+def test_mock_list_items(runner, mock_active_profile, mock_zotero_patched):
+    """Test items list with mock data returns valid JSON."""
+    result = runner.invoke(zot, ['items', 'list', '--limit', '1'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)

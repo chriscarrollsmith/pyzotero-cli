@@ -3,12 +3,15 @@ import os
 import shutil
 import configparser
 import time
+from unittest.mock import patch
 from dotenv import load_dotenv
 from pyzotero_cli.zot_cli import CONFIG_FILE, CONFIG_DIR
 from click.testing import CliRunner
 import uuid
 from pyzotero import zotero
 from pyzotero.zotero_errors import ResourceNotFoundError
+
+from mock_zotero import MockZoteroClient
 
 load_dotenv(override=True)
 
@@ -53,7 +56,7 @@ def real_api_credentials():
     library_type = os.environ.get('ZOTERO_LIBRARY_TYPE', 'user') # Default to 'user'
 
     if not api_key or not library_id:
-        pytest.skip("ZOTERO_API_KEY and ZOTERO_LIBRARY_ID environment variables are required for this test.")  # ty:ignore[too-many-positional-arguments]
+        pytest.skip("ZOTERO_API_KEY and ZOTERO_LIBRARY_ID environment variables are required for this test.")
     
     return {
         "api_key": api_key,
@@ -105,7 +108,7 @@ def zot_instance(real_api_credentials):
             api_key=real_api_credentials['api_key']
         )
     except Exception as e:
-        pytest.fail(f"Failed to create Zotero instance for testing: {e}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to create Zotero instance for testing: {e}")
 
 
 # Fixture moved from test_tag_cmds.py - uses pyzotero directly
@@ -131,7 +134,7 @@ def temp_item_with_tags(real_api_credentials):
     try:
         resp = zot_api_client.create_items([item_template])
         if not resp or 'successful' not in resp or not resp['successful']:
-            pytest.fail(f"Failed to create test item with tags: {resp}")  # ty:ignore[invalid-argument-type]
+            pytest.fail(f"Failed to create test item with tags: {resp}")
             
         # Correctly extract the actual item key and details from the 'successful' dict
         # The key '0' is just the index from the input list
@@ -176,7 +179,7 @@ def temp_parent_item(zot_instance):
     
     resp = zot_instance.create_items([template])
     if not resp['success'] or '0' not in resp['success']:
-        pytest.fail(f"Failed to create temporary parent item: {resp}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Failed to create temporary parent item: {resp}")
     
     item_key = resp['success']['0']
     print(f"Created temp parent item: {item_key}") # Debugging
@@ -198,3 +201,71 @@ def temp_parent_item(zot_instance):
             pass # Expected
     except Exception as e:
         print(f"Error during cleanup of item {item_key}: {e}") # Debugging output
+
+
+# ── Mock fixtures ──────────────────────────────────────────────────────────
+
+@pytest.fixture
+def mock_zot():
+    """Provides a MockZoteroClient instance."""
+    return MockZoteroClient()
+
+
+@pytest.fixture
+def mock_zotero_patched(mock_zot):
+    """Patches both Zotero constructor sites so all CLI commands use the mock client."""
+    with patch("pyzotero_cli.zot_cli.pyzotero_client.Zotero", return_value=mock_zot), \
+         patch("pyzotero.zotero.Zotero", return_value=mock_zot):
+        yield mock_zot
+
+
+@pytest.fixture
+def mock_credentials():
+    """Provides fake API credentials for mock tests."""
+    return {
+        "api_key": "fake_api_key_12345",
+        "library_id": "12345",
+        "library_type": "user",
+    }
+
+
+@pytest.fixture
+def mock_active_profile(isolated_config, mock_credentials):
+    """Sets up an isolated config with fake credentials for mock tests."""
+    profile_name = "mock_profile"
+    config = configparser.ConfigParser()
+    section_name = f"profile.{profile_name}"
+
+    config.add_section(section_name)
+    config[section_name]["library_id"] = mock_credentials["library_id"]
+    config[section_name]["api_key"] = mock_credentials["api_key"]
+    config[section_name]["library_type"] = mock_credentials["library_type"]
+    config[section_name]["locale"] = "en-US"
+    config[section_name]["local_zotero"] = "False"
+
+    if not config.has_section("zotcli"):
+        config.add_section("zotcli")
+    config["zotcli"]["current_profile"] = profile_name
+
+    with open(CONFIG_FILE, "w") as configfile:
+        config.write(configfile)
+
+    return profile_name
+
+
+@pytest.fixture
+def mock_zot_instance(mock_zot):
+    """Drop-in replacement for zot_instance that returns the mock client."""
+    return mock_zot
+
+
+@pytest.fixture
+def mock_temp_item_with_tags():
+    """Mock replacement for temp_item_with_tags — returns fake item key and tags."""
+    return ("MOCK0001", ["mock-tag-1", "mock-tag-2"])
+
+
+@pytest.fixture
+def mock_temp_parent_item():
+    """Mock replacement for temp_parent_item."""
+    return "MOCKPARENT"

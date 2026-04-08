@@ -7,6 +7,7 @@ import os # For ZOTERO_USERNAME if used in assertions
 # Fixtures like active_profile_with_real_credentials and real_api_credentials
 # are automatically available from conftest.py
 
+@pytest.mark.live
 def test_util_key_info(active_profile_with_real_credentials, real_api_credentials, runner: CliRunner):
     """Test the 'zot util key-info' command."""
 
@@ -27,7 +28,7 @@ def test_util_key_info(active_profile_with_real_credentials, real_api_credential
         assert '"key"' in result_json.output
         assert '"userID"' in result_json.output
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result_json.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid JSON: {result_json.output}")
 
     # Test with table output
     result_table = runner.invoke(zot, ['util', 'key-info', '--output', 'table'])
@@ -44,6 +45,7 @@ def test_util_key_info(active_profile_with_real_credentials, real_api_credential
     if zotero_username:
         assert zotero_username in result_table.output
 
+@pytest.mark.live
 def test_util_last_modified_version(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util last-modified-version' command."""
 
@@ -56,6 +58,7 @@ def test_util_last_modified_version(active_profile_with_real_credentials, runner
     # Optionally, convert to int and check if it's positive, though isdigit() is a good start.
     assert int(result.output.strip()) >= 0
 
+@pytest.mark.live
 def test_util_item_types(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-types' command."""
 
@@ -79,7 +82,7 @@ def test_util_item_types(active_profile_with_real_credentials, runner: CliRunner
         assert '"itemType"' in result_json.output
         assert '"localized"' in result_json.output
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result_json.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid JSON: {result_json.output}")
 
     # Test with table output
     result_table = runner.invoke(zot, ['util', 'item-types', '--output', 'table'])
@@ -90,6 +93,7 @@ def test_util_item_types(active_profile_with_real_credentials, runner: CliRunner
     assert "book" in result_table.output        # Check for known item type value
     assert "Journal Article" in result_table.output # Check for known localized name value
 
+@pytest.mark.live
 def test_util_item_fields(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-fields' command."""
 
@@ -111,7 +115,7 @@ def test_util_item_fields(active_profile_with_real_credentials, runner: CliRunne
         assert '"field"' in result_json.output
         assert '"localized"' in result_json.output
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON: {result_json.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid JSON: {result_json.output}")
 
     # Test with table output
     result_table = runner.invoke(zot, ['util', 'item-fields', '--output', 'table'])
@@ -122,6 +126,7 @@ def test_util_item_fields(active_profile_with_real_credentials, runner: CliRunne
     assert "title" in result_table.output       # Check for known field value
     assert "Date" in result_table.output        # Check for known localized name value
 
+@pytest.mark.live
 def test_util_item_type_fields(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-type-fields' command."""
     item_type_to_test = "book"
@@ -145,7 +150,7 @@ def test_util_item_type_fields(active_profile_with_real_credentials, runner: Cli
         assert '"field"' in result_json.output
         assert '"localized"' in result_json.output
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON for {item_type_to_test}: {result_json.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid JSON for {item_type_to_test}: {result_json.output}")
 
     # Test with table output
     result_table = runner.invoke(zot, ['util', 'item-type-fields', item_type_to_test, '--output', 'table'])
@@ -167,6 +172,7 @@ def test_util_item_type_fields(active_profile_with_real_credentials, runner: Cli
     assert "A PyZotero library error occurred" in result_error.output
     assert "Invalid item type 'notAnItemType'" in result_error.output # Specific part of Pyzotero response
 
+@pytest.mark.live
 def test_util_item_template(active_profile_with_real_credentials, runner: CliRunner):
     """Test the 'zot util item-template' command."""
     item_type_to_test = "book"
@@ -185,7 +191,7 @@ def test_util_item_template(active_profile_with_real_credentials, runner: CliRun
         assert 'tags' in data
         assert isinstance(data['tags'], list)
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON for item template {item_type_to_test}: {result_json_default.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid JSON for item template {item_type_to_test}: {result_json_default.output}")
 
     # Test with --output json explicitly (should be the same)
     result_json_explicit = runner.invoke(zot, ['util', 'item-template', item_type_to_test, '--output', 'json'])
@@ -209,7 +215,7 @@ def test_util_item_template(active_profile_with_real_credentials, runner: CliRun
         # If we were testing 'attachment' item type, linkMode would be more directly visible.
         assert 'title' in data_link # Ensure basic template structure is still there
     except json.JSONDecodeError:
-        pytest.fail(f"Output was not valid JSON for item template {item_type_to_test} with linkmode: {result_linkmode.output}")  # ty:ignore[invalid-argument-type]
+        pytest.fail(f"Output was not valid JSON for item template {item_type_to_test} with linkmode: {result_linkmode.output}")
 
     # Test with a non-existent item type
     non_existent_item_type = "notAnItemType"
@@ -217,4 +223,49 @@ def test_util_item_template(active_profile_with_real_credentials, runner: CliRun
     print(f"item-template {non_existent_item_type} output: {result_error.output}")
     assert result_error.exit_code != 0
     assert "A PyZotero library error occurred" in result_error.output
-    assert f"Invalid item type '{non_existent_item_type}'" in result_error.output 
+    assert f"Invalid item type '{non_existent_item_type}'" in result_error.output
+
+
+# ── Mock tests ────────────────────────────────────────────────────────────
+
+def test_mock_util_key_info(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['util', 'key-info'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert 'key' in data
+    assert 'userID' in data
+
+def test_mock_util_last_modified_version(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['util', 'last-modified-version'])
+    assert result.exit_code == 0
+    assert result.output.strip().isdigit()
+
+def test_mock_util_item_types(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['util', 'item-types'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+    assert len(data) > 0
+
+def test_mock_util_item_fields(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['util', 'item-fields'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+def test_mock_util_item_type_fields(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['util', 'item-type-fields', 'book'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+def test_mock_util_item_template(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['util', 'item-template', 'book'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data.get('itemType') == 'book'
+
+def test_mock_util_item_type_fields_invalid(runner, mock_active_profile, mock_zotero_patched):
+    result = runner.invoke(zot, ['util', 'item-type-fields', 'notAnItemType'])
+    assert result.exit_code != 0
+    assert "Invalid item type" in result.output
