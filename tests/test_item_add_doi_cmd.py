@@ -32,15 +32,27 @@ def cleanup_doi_items(zot_instance):
 
 @pytest.fixture(scope="function")
 def ensure_stable_doi_absent(zot_instance):
-    """Delete any pre-existing STABLE_DOI items so duplicate-check tests start clean."""
+    """Delete any pre-existing STABLE_DOI items so duplicate-check tests start clean.
+
+    Uses the same paginated scan as find_existing_item_by_doi to ensure
+    nothing is missed due to Zotero search-index lag.
+    """
     def _purge():
-        items = zot_instance.items(q=STABLE_DOI, qmode="everything", limit=50)
-        for item in items:
-            if item.get("data", {}).get("DOI", "").lower() == STABLE_DOI.lower():
-                try:
-                    zot_instance.delete_item(item)
-                except Exception:
-                    pass
+        start = 0
+        page_size = 100
+        while True:
+            batch = zot_instance.items(limit=page_size, start=start, sort="dateAdded", direction="desc")
+            if not batch:
+                break
+            for item in batch:
+                if item.get("data", {}).get("DOI", "").lower() == STABLE_DOI.lower():
+                    try:
+                        zot_instance.delete_item(item)
+                    except Exception:
+                        pass
+            if len(batch) < page_size:
+                break
+            start += page_size
     _purge()
     yield
     _purge()
